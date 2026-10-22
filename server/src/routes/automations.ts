@@ -20,21 +20,42 @@ const actionEnum = [
   "SET_DATE",
 ] as const;
 
-const recipeSchema = z.object({
-  boardId: z.string(),
-  name: z.string().min(1),
-  trigger: z.enum(triggerEnum),
-  triggerColumnId: z.string().optional(),
-  triggerGroupId: z.string().optional(),
-  triggerValue: z.any().optional(),
-  conditionColumnId: z.string().optional(),
-  conditionOperator: z.enum(operatorEnum).optional(),
-  conditionValue: z.any().optional(),
-  action: z.enum(actionEnum),
-  actionColumnId: z.string().optional(),
-  actionGroupId: z.string().optional(),
-  actionValue: z.any().optional(),
-});
+const recipeSchema = z
+  .object({
+    boardId: z.string(),
+    name: z.string().min(1),
+    trigger: z.enum(triggerEnum),
+    triggerColumnId: z.string().optional(),
+    triggerGroupId: z.string().optional(),
+    triggerValue: z.any().optional(),
+    conditionColumnId: z.string().optional(),
+    conditionOperator: z.enum(operatorEnum).optional(),
+    conditionValue: z.any().optional(),
+    action: z.enum(actionEnum),
+    actionColumnId: z.string().optional(),
+    actionGroupId: z.string().optional(),
+    actionValue: z.any().optional(),
+  })
+  .superRefine((d, ctx) => {
+    const need = (ok: boolean, path: string, message: string) => {
+      if (!ok) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+    };
+    if (d.trigger === "STATUS_CHANGES_TO" || d.trigger === "ANY_COLUMN_CHANGES") {
+      need(Boolean(d.triggerColumnId), "triggerColumnId", "obrigatório para este gatilho");
+    }
+    if (d.trigger === "STATUS_CHANGES_TO") {
+      need(d.triggerValue !== undefined && d.triggerValue !== "", "triggerValue", "obrigatório para este gatilho");
+    }
+    if (d.action === "CHANGE_COLUMN" || d.action === "SET_DATE") {
+      need(Boolean(d.actionColumnId), "actionColumnId", "obrigatório para esta ação");
+    }
+    if (d.action === "CHANGE_COLUMN" || d.action === "CREATE_ITEM" || d.action === "NOTIFY") {
+      need(d.actionValue !== undefined && d.actionValue !== "", "actionValue", "obrigatório para esta ação");
+    }
+    if (d.action === "MOVE_ITEM_TO_GROUP") {
+      need(Boolean(d.actionGroupId), "actionGroupId", "obrigatório para esta ação");
+    }
+  });
 
 automationsRouter.get("/board/:boardId", async (req, res) => {
   const recipes = await prisma.automationRecipe.findMany({

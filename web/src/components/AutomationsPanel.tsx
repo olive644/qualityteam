@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   api,
   type AutomationAction,
@@ -7,6 +7,7 @@ import {
   type AutomationTrigger,
   type BoardDetail,
 } from "../api.js";
+import { ACTION_LABELS, OPERATOR_LABELS, TRIGGER_LABELS } from "../labels.js";
 
 const TRIGGERS: AutomationTrigger[] = ["STATUS_CHANGES_TO", "ANY_COLUMN_CHANGES", "ITEM_CREATED", "ITEM_MOVED_TO_GROUP"];
 const ACTIONS: AutomationAction[] = [
@@ -87,8 +88,34 @@ export default function AutomationsPanel({ board }: { board: BoardDetail }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [board.id]);
 
+  const validationError = useMemo(() => {
+    if (!name.trim()) return "Dê um nome para a automação.";
+    if ((trigger === "STATUS_CHANGES_TO" || trigger === "ANY_COLUMN_CHANGES") && !triggerColumnId) {
+      return "Escolha a coluna do gatilho.";
+    }
+    if (trigger === "STATUS_CHANGES_TO" && !triggerValue.trim()) {
+      return "Informe o valor de status do gatilho.";
+    }
+    if (useCondition && (!conditionColumnId || !conditionValue.trim())) {
+      return "Preencha a coluna e o valor da condição, ou desmarque-a.";
+    }
+    if ((action === "CHANGE_COLUMN" || action === "SET_DATE") && !actionColumnId) {
+      return "Escolha a coluna da ação.";
+    }
+    if (action === "CHANGE_COLUMN" && !actionValue.trim()) {
+      return "Informe o novo valor da coluna.";
+    }
+    if (action === "MOVE_ITEM_TO_GROUP" && !actionGroupId) {
+      return "Escolha o grupo de destino.";
+    }
+    if ((action === "CREATE_ITEM" || action === "NOTIFY") && !actionValue.trim()) {
+      return action === "CREATE_ITEM" ? "Informe o nome do novo item." : "Informe a mensagem.";
+    }
+    return null;
+  }, [name, trigger, triggerColumnId, triggerValue, useCondition, conditionColumnId, conditionValue, action, actionColumnId, actionValue, actionGroupId]);
+
   async function createRecipe() {
-    if (!name.trim()) return;
+    if (validationError) return;
     await api.createRecipe({
       boardId: board.id,
       name: name.trim(),
@@ -132,7 +159,7 @@ export default function AutomationsPanel({ board }: { board: BoardDetail }) {
           <select value={trigger} onChange={(e) => setTrigger(e.target.value as AutomationTrigger)}>
             {TRIGGERS.map((t) => (
               <option key={t} value={t}>
-                {t}
+                {TRIGGER_LABELS[t]}
               </option>
             ))}
           </select>
@@ -179,7 +206,7 @@ export default function AutomationsPanel({ board }: { board: BoardDetail }) {
               <select value={conditionOperator} onChange={(e) => setConditionOperator(e.target.value as AutomationOperator)}>
                 {OPERATORS.map((o) => (
                   <option key={o} value={o}>
-                    {o}
+                    {OPERATOR_LABELS[o]}
                   </option>
                 ))}
               </select>
@@ -193,7 +220,7 @@ export default function AutomationsPanel({ board }: { board: BoardDetail }) {
           <select value={action} onChange={(e) => setAction(e.target.value as AutomationAction)}>
             {ACTIONS.map((a) => (
               <option key={a} value={a}>
-                {a}
+                {ACTION_LABELS[a]}
               </option>
             ))}
           </select>
@@ -239,7 +266,10 @@ export default function AutomationsPanel({ board }: { board: BoardDetail }) {
           )}
         </div>
 
-        <button onClick={createRecipe}>Criar automação</button>
+        <button onClick={createRecipe} disabled={Boolean(validationError)} title={validationError ?? undefined}>
+          Criar automação
+        </button>
+        {validationError && <p className="muted" style={{ marginTop: 8 }}>{validationError}</p>}
       </div>
 
       <div className="card">

@@ -1,5 +1,6 @@
 import { Fragment, useState } from "react";
 import { api, type BoardDetail, type ColumnType } from "../api.js";
+import { COLUMN_TYPE_LABELS } from "../labels.js";
 import ColumnCell from "./ColumnCell.js";
 
 const COLUMN_TYPES: ColumnType[] = [
@@ -53,7 +54,7 @@ export default function BoardTable({ board, onChange }: { board: BoardDetail; on
         <select value={newColType} onChange={(e) => setNewColType(e.target.value as ColumnType)}>
           {COLUMN_TYPES.map((t) => (
             <option key={t} value={t}>
-              {t}
+              {COLUMN_TYPE_LABELS[t]}
             </option>
           ))}
         </select>
@@ -65,9 +66,7 @@ export default function BoardTable({ board, onChange }: { board: BoardDetail; on
           <tr>
             <th>Item</th>
             {board.columns.map((c) => (
-              <th key={c.id}>
-                {c.title} <span className="muted">({c.type})</span>
-              </th>
+              <th key={c.id}>{c.title}</th>
             ))}
           </tr>
         </thead>
@@ -100,7 +99,7 @@ export default function BoardTable({ board, onChange }: { board: BoardDetail; on
                 <tr>
                   <td colSpan={board.columns.length + 1}>
                     <input
-                      placeholder="+ novo item"
+                      placeholder="+ Adicionar item"
                       value={newItemByGroup[group.id] ?? ""}
                       onChange={(e) => setNewItemByGroup((s) => ({ ...s, [group.id]: e.target.value }))}
                       onKeyDown={(e) => e.key === "Enter" && addItem(group.id)}

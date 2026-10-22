@@ -122,6 +122,13 @@ button {
 
 button:hover { background: var(--blue-dark); }
 
+button:disabled {
+  background: #c5c7d0;
+  cursor: not-allowed;
+}
+
+button:disabled:hover { background: #c5c7d0; }
+
 button.secondary {
   background: var(--surface);
   color: var(--text);
