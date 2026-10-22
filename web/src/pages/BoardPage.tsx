@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api, type BoardDetail, type BoardColumn, type ColumnType, type Item } from "../api.js";
 import BoardTable from "../components/BoardTable.js";
+import KanbanView from "../components/KanbanView.js";
 import AutomationsPanel from "../components/AutomationsPanel.js";
 import DashboardPanel from "../components/DashboardPanel.js";
 
-const TABS = ["Quadro", "Automações", "Dashboard"] as const;
+const TABS = ["Quadro", "Kanban", "Automações", "Dashboard"] as const;
 
 export default function BoardPage() {
   const { id } = useParams<{ id: string }>();
@@ -36,6 +37,7 @@ export default function BoardPage() {
       </div>
 
       {tab === "Quadro" && <BoardTable board={board} onChange={reload} />}
+      {tab === "Kanban" && <KanbanView board={board} onChange={reload} />}
       {tab === "Automações" && <AutomationsPanel board={board} />}
       {tab === "Dashboard" && <DashboardPanel board={board} />}
     </div>

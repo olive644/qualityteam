@@ -6,6 +6,7 @@ type ChangeEvent = {
   item: Item;
   changedColumnId?: string;
   isNewItem?: boolean;
+  movedToGroupId?: string;
 };
 
 function parseJson<T>(raw: string | null | undefined, fallback: T): T {
@@ -71,6 +72,12 @@ async function recipeMatches(recipe: AutomationRecipe, event: ChangeEvent): Prom
     return Boolean(event.changedColumnId);
   }
 
+  if (recipe.trigger === "ITEM_MOVED_TO_GROUP") {
+    if (!event.movedToGroupId) return false;
+    if (recipe.triggerGroupId && recipe.triggerGroupId !== event.movedToGroupId) return false;
+    return true;
+  }
+
   return false;
 }
 
@@ -85,6 +92,11 @@ async function runAction(recipe: AutomationRecipe, event: ChangeEvent): Promise<
         update: { value },
       });
       return `coluna ${recipe.actionColumnId} atualizada no item ${event.item.id}`;
+    }
+    case "MOVE_ITEM_TO_GROUP": {
+      if (!recipe.actionGroupId) return "ação sem grupo de destino configurado";
+      await prisma.item.update({ where: { id: event.item.id }, data: { groupId: recipe.actionGroupId } });
+      return `item ${event.item.id} movido para o grupo ${recipe.actionGroupId}`;
     }
     case "ARCHIVE_ITEM": {
       await prisma.item.update({ where: { id: event.item.id }, data: { archived: true } });

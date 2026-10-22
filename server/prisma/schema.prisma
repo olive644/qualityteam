@@ -83,12 +83,14 @@ model AutomationRecipe {
   enabled               Boolean  @default(true)
   trigger               String
   triggerColumnId       String?
+  triggerGroupId        String?
   triggerValue          String?
   conditionColumnId     String?
   conditionOperator     String?
   conditionValue        String?
   action                String
   actionColumnId        String?
+  actionGroupId         String?
   actionValue           String?
   createdAt             DateTime @default(now())
   runs                  AutomationRun[]

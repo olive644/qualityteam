@@ -8,12 +8,13 @@ import {
   type BoardDetail,
 } from "../api.js";
 
-const TRIGGERS: AutomationTrigger[] = ["STATUS_CHANGES_TO", "ANY_COLUMN_CHANGES", "ITEM_CREATED"];
-const ACTIONS: AutomationAction[] = ["CHANGE_COLUMN", "NOTIFY", "CREATE_ITEM", "ARCHIVE_ITEM"];
+const TRIGGERS: AutomationTrigger[] = ["STATUS_CHANGES_TO", "ANY_COLUMN_CHANGES", "ITEM_CREATED", "ITEM_MOVED_TO_GROUP"];
+const ACTIONS: AutomationAction[] = ["CHANGE_COLUMN", "NOTIFY", "CREATE_ITEM", "ARCHIVE_ITEM", "MOVE_ITEM_TO_GROUP"];
 const OPERATORS: AutomationOperator[] = ["EQUALS", "NOT_EQUALS", "GREATER_THAN", "LESS_THAN"];
 
 function describe(recipe: AutomationRecipe, board: BoardDetail): string {
   const colName = (id?: string | null) => board.columns.find((c) => c.id === id)?.title ?? "?";
+  const groupName = (id?: string | null) => board.groups.find((g) => g.id === id)?.name ?? "?";
   let sentence = "Quando ";
   if (recipe.trigger === "STATUS_CHANGES_TO") {
     const v = recipe.triggerValue ? JSON.parse(recipe.triggerValue) : null;
@@ -22,6 +23,8 @@ function describe(recipe: AutomationRecipe, board: BoardDetail): string {
     sentence += recipe.triggerColumnId
       ? `a coluna "${colName(recipe.triggerColumnId)}" muda`
       : "qualquer coluna muda";
+  } else if (recipe.trigger === "ITEM_MOVED_TO_GROUP") {
+    sentence += recipe.triggerGroupId ? `o item é movido para o grupo "${groupName(recipe.triggerGroupId)}"` : "o item é movido para qualquer grupo";
   } else {
     sentence += "um item é criado";
   }
@@ -33,6 +36,8 @@ function describe(recipe: AutomationRecipe, board: BoardDetail): string {
   if (recipe.action === "CHANGE_COLUMN") {
     const v = recipe.actionValue ? JSON.parse(recipe.actionValue) : null;
     sentence += `define "${colName(recipe.actionColumnId)}" = ${JSON.stringify(v)}`;
+  } else if (recipe.action === "MOVE_ITEM_TO_GROUP") {
+    sentence += `move o item para o grupo "${groupName(recipe.actionGroupId)}"`;
   } else if (recipe.action === "ARCHIVE_ITEM") {
     sentence += "arquiva o item";
   } else if (recipe.action === "CREATE_ITEM") {
@@ -58,8 +63,10 @@ export default function AutomationsPanel({ board }: { board: BoardDetail }) {
   const [conditionColumnId, setConditionColumnId] = useState("");
   const [conditionOperator, setConditionOperator] = useState<AutomationOperator>("EQUALS");
   const [conditionValue, setConditionValue] = useState("");
+  const [triggerGroupId, setTriggerGroupId] = useState("");
   const [action, setAction] = useState<AutomationAction>("CHANGE_COLUMN");
   const [actionColumnId, setActionColumnId] = useState("");
+  const [actionGroupId, setActionGroupId] = useState("");
   const [actionValue, setActionValue] = useState("");
 
   async function reload() {
@@ -78,12 +85,14 @@ export default function AutomationsPanel({ board }: { board: BoardDetail }) {
       name: name.trim(),
       trigger,
       triggerColumnId: triggerColumnId || undefined,
+      triggerGroupId: trigger === "ITEM_MOVED_TO_GROUP" ? triggerGroupId || undefined : undefined,
       triggerValue: trigger === "STATUS_CHANGES_TO" ? { label: triggerValue } : undefined,
       conditionColumnId: useCondition ? conditionColumnId : undefined,
       conditionOperator: useCondition ? conditionOperator : undefined,
       conditionValue: useCondition ? safeNumberOrString(conditionValue) : undefined,
       action,
       actionColumnId: action === "CHANGE_COLUMN" ? actionColumnId : undefined,
+      actionGroupId: action === "MOVE_ITEM_TO_GROUP" ? actionGroupId : undefined,
       actionValue:
         action === "CHANGE_COLUMN" || action === "CREATE_ITEM" || action === "NOTIFY" ? actionValue : undefined,
     });
@@ -118,7 +127,7 @@ export default function AutomationsPanel({ board }: { board: BoardDetail }) {
               </option>
             ))}
           </select>
-          {trigger !== "ITEM_CREATED" && (
+          {(trigger === "STATUS_CHANGES_TO" || trigger === "ANY_COLUMN_CHANGES") && (
             <select value={triggerColumnId} onChange={(e) => setTriggerColumnId(e.target.value)}>
               <option value="">coluna…</option>
               {board.columns.map((c) => (
@@ -130,6 +139,16 @@ export default function AutomationsPanel({ board }: { board: BoardDetail }) {
           )}
           {trigger === "STATUS_CHANGES_TO" && (
             <input placeholder="valor (ex: Done)" value={triggerValue} onChange={(e) => setTriggerValue(e.target.value)} />
+          )}
+          {trigger === "ITEM_MOVED_TO_GROUP" && (
+            <select value={triggerGroupId} onChange={(e) => setTriggerGroupId(e.target.value)}>
+              <option value="">qualquer grupo</option>
+              {board.groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
           )}
         </div>
 
@@ -188,6 +207,16 @@ export default function AutomationsPanel({ board }: { board: BoardDetail }) {
               value={actionValue}
               onChange={(e) => setActionValue(e.target.value)}
             />
+          )}
+          {action === "MOVE_ITEM_TO_GROUP" && (
+            <select value={actionGroupId} onChange={(e) => setActionGroupId(e.target.value)}>
+              <option value="">grupo de destino…</option>
+              {board.groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
           )}
         </div>
 

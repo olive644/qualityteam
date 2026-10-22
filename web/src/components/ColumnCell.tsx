@@ -1,6 +1,6 @@
 import { api, type BoardColumn, type Item } from "../api.js";
 
-const STATUS_CYCLE: { label: string; color: string }[] = [
+export const STATUS_CYCLE: { label: string; color: string }[] = [
   { label: "Não iniciado", color: "#c4c4c4" },
   { label: "Em progresso", color: "#fdab3d" },
   { label: "Done", color: "#00c875" },
@@ -75,7 +75,42 @@ export default function ColumnCell({
     );
   }
 
-  // TEXT, PEOPLE, DROPDOWN — simple text input is enough for an MVP
+  if (column.type === "TIMELINE") {
+    const start = value?.start ?? "";
+    const end = value?.end ?? "";
+    return (
+      <td>
+        <input
+          type="date"
+          defaultValue={start}
+          style={{ width: 110 }}
+          onBlur={(e) => setValue({ start: e.target.value || null, end: end || null })}
+        />
+        {" → "}
+        <input
+          type="date"
+          defaultValue={end}
+          style={{ width: 110 }}
+          onBlur={(e) => setValue({ start: start || null, end: e.target.value || null })}
+        />
+      </td>
+    );
+  }
+
+  if (column.type === "LONG_TEXT") {
+    return (
+      <td>
+        <textarea
+          defaultValue={value ?? ""}
+          onBlur={(e) => setValue(e.target.value || null)}
+          rows={2}
+          style={{ width: 180 }}
+        />
+      </td>
+    );
+  }
+
+  // TEXT, PEOPLE, DROPDOWN, LINK — simple text input is enough for an MVP
   return (
     <td>
       <input

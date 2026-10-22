@@ -6,6 +6,7 @@ export default function DashboardPanel({ board }: { board: BoardDetail }) {
   const [name, setName] = useState("");
   const [type, setType] = useState<DashboardWidgetType>("COUNT_BY_COLUMN");
   const [columnId, setColumnId] = useState("");
+  const [targetLabel, setTargetLabel] = useState("Done");
 
   async function reload() {
     setWidgets(await api.listWidgets(board.id));
@@ -18,7 +19,7 @@ export default function DashboardPanel({ board }: { board: BoardDetail }) {
 
   async function createWidget() {
     if (!name.trim() || !columnId) return;
-    await api.createWidget(board.id, name.trim(), type, columnId);
+    await api.createWidget(board.id, name.trim(), type, columnId, type === "BATTERY" ? targetLabel : undefined);
     setName("");
     reload();
   }
@@ -30,8 +31,9 @@ export default function DashboardPanel({ board }: { board: BoardDetail }) {
         <div className="toolbar">
           <input placeholder="Nome do widget" value={name} onChange={(e) => setName(e.target.value)} />
           <select value={type} onChange={(e) => setType(e.target.value as DashboardWidgetType)}>
-            <option value="COUNT_BY_COLUMN">Contagem por coluna</option>
-            <option value="NUMBER_SUM">Soma (coluna numérica)</option>
+            <option value="COUNT_BY_COLUMN">Gráfico (contagem por coluna)</option>
+            <option value="NUMBER_SUM">Números (soma de coluna numérica)</option>
+            <option value="BATTERY">Bateria (% com um valor-alvo)</option>
           </select>
           <select value={columnId} onChange={(e) => setColumnId(e.target.value)}>
             <option value="">coluna…</option>
@@ -41,6 +43,13 @@ export default function DashboardPanel({ board }: { board: BoardDetail }) {
               </option>
             ))}
           </select>
+          {type === "BATTERY" && (
+            <input
+              placeholder="valor-alvo (ex: Done)"
+              value={targetLabel}
+              onChange={(e) => setTargetLabel(e.target.value)}
+            />
+          )}
           <button onClick={createWidget}>Adicionar</button>
         </div>
       </div>
@@ -62,6 +71,23 @@ export default function DashboardPanel({ board }: { board: BoardDetail }) {
               </button>
             </div>
             {w.type === "NUMBER_SUM" && <div className="widget-number">{w.data?.sum ?? 0}</div>}
+            {w.type === "BATTERY" && (
+              <div>
+                <div className="widget-number">{w.data?.percent ?? 0}%</div>
+                <div style={{ background: "#e6e9ef", borderRadius: 6, height: 10, overflow: "hidden" }}>
+                  <div
+                    style={{
+                      background: "#00c875",
+                      height: "100%",
+                      width: `${w.data?.percent ?? 0}%`,
+                    }}
+                  />
+                </div>
+                <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>
+                  {w.data?.matching ?? 0} de {w.data?.total ?? 0} itens em "{w.config.targetLabel}"
+                </p>
+              </div>
+            )}
             {w.type === "COUNT_BY_COLUMN" && (
               <ul>
                 {Object.entries(w.data?.counts ?? {}).map(([label, count]) => (

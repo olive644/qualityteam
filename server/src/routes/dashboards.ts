@@ -4,14 +4,14 @@ import { prisma } from "../db.js";
 
 export const dashboardsRouter = Router();
 
-const widgetTypeEnum = ["COUNT_BY_COLUMN", "NUMBER_SUM"] as const;
+const widgetTypeEnum = ["COUNT_BY_COLUMN", "NUMBER_SUM", "BATTERY"] as const;
 
 dashboardsRouter.post("/", async (req, res) => {
   const schema = z.object({
     boardId: z.string(),
     name: z.string().min(1),
     type: z.enum(widgetTypeEnum),
-    config: z.object({ columnId: z.string() }),
+    config: z.object({ columnId: z.string(), targetLabel: z.string().optional() }),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json(parsed.error.flatten());
@@ -52,7 +52,7 @@ dashboardsRouter.get("/board/:boardId", async (req, res) => {
   });
 
   const results = widgets.map((widget) => {
-    const config = JSON.parse(widget.config) as { columnId: string };
+    const config = JSON.parse(widget.config) as { columnId: string; targetLabel?: string };
 
     if (widget.type === "COUNT_BY_COLUMN") {
       const counts: Record<string, number> = {};
@@ -73,6 +73,18 @@ dashboardsRouter.get("/board/:boardId", async (req, res) => {
         if (!Number.isNaN(n)) sum += n;
       }
       return { ...widget, config, data: { sum } };
+    }
+
+    if (widget.type === "BATTERY") {
+      const target = config.targetLabel ?? "Done";
+      let matching = 0;
+      for (const item of items) {
+        const cv = item.columnValues.find((v) => v.columnId === config.columnId);
+        const raw = cv ? JSON.parse(cv.value) : null;
+        if (labelOf(raw) === target) matching += 1;
+      }
+      const percent = items.length === 0 ? 0 : Math.round((matching / items.length) * 100);
+      return { ...widget, config, data: { percent, matching, total: items.length } };
     }
 
     return { ...widget, config, data: null };

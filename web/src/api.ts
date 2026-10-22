@@ -17,7 +17,16 @@ export type Board = { id: string; name: string; description?: string | null; cre
 
 export type Group = { id: string; boardId: string; name: string; color: string; position: number };
 
-export type ColumnType = "TEXT" | "STATUS" | "PEOPLE" | "DATE" | "NUMBERS" | "DROPDOWN";
+export type ColumnType =
+  | "TEXT"
+  | "LONG_TEXT"
+  | "STATUS"
+  | "PEOPLE"
+  | "DATE"
+  | "TIMELINE"
+  | "NUMBERS"
+  | "DROPDOWN"
+  | "LINK";
 
 export type BoardColumn = {
   id: string;
@@ -42,9 +51,9 @@ export type Item = {
 
 export type BoardDetail = Board & { groups: Group[]; columns: BoardColumn[]; items: Item[] };
 
-export type AutomationTrigger = "STATUS_CHANGES_TO" | "ANY_COLUMN_CHANGES" | "ITEM_CREATED";
+export type AutomationTrigger = "STATUS_CHANGES_TO" | "ANY_COLUMN_CHANGES" | "ITEM_CREATED" | "ITEM_MOVED_TO_GROUP";
 export type AutomationOperator = "EQUALS" | "NOT_EQUALS" | "GREATER_THAN" | "LESS_THAN";
-export type AutomationAction = "CHANGE_COLUMN" | "NOTIFY" | "CREATE_ITEM" | "ARCHIVE_ITEM";
+export type AutomationAction = "CHANGE_COLUMN" | "NOTIFY" | "CREATE_ITEM" | "ARCHIVE_ITEM" | "MOVE_ITEM_TO_GROUP";
 
 export type AutomationRecipe = {
   id: string;
@@ -53,26 +62,28 @@ export type AutomationRecipe = {
   enabled: boolean;
   trigger: AutomationTrigger;
   triggerColumnId?: string | null;
+  triggerGroupId?: string | null;
   triggerValue?: string | null;
   conditionColumnId?: string | null;
   conditionOperator?: AutomationOperator | null;
   conditionValue?: string | null;
   action: AutomationAction;
   actionColumnId?: string | null;
+  actionGroupId?: string | null;
   actionValue?: string | null;
 };
 
 export type AutomationRun = { id: string; recipeId: string; itemId: string; summary: string; createdAt: string };
 
-export type DashboardWidgetType = "COUNT_BY_COLUMN" | "NUMBER_SUM";
+export type DashboardWidgetType = "COUNT_BY_COLUMN" | "NUMBER_SUM" | "BATTERY";
 
 export type DashboardWidget = {
   id: string;
   boardId: string;
   name: string;
   type: DashboardWidgetType;
-  config: { columnId: string };
-  data: { counts?: Record<string, number>; sum?: number } | null;
+  config: { columnId: string; targetLabel?: string };
+  data: { counts?: Record<string, number>; sum?: number; percent?: number; matching?: number; total?: number } | null;
 };
 
 export const api = {
@@ -93,6 +104,9 @@ export const api = {
   setColumnValue: (itemId: string, columnId: string, value: unknown) =>
     request<void>(`/items/${itemId}/columns/${columnId}`, { method: "PUT", body: JSON.stringify({ value }) }),
 
+  moveItemToGroup: (itemId: string, groupId: string) =>
+    request<Item>(`/items/${itemId}`, { method: "PATCH", body: JSON.stringify({ groupId }) }),
+
   deleteItem: (id: string) => request<void>(`/items/${id}`, { method: "DELETE" }),
 
   listRecipes: (boardId: string) => request<AutomationRecipe[]>(`/automations/board/${boardId}`),
@@ -101,12 +115,14 @@ export const api = {
     name: string;
     trigger: AutomationTrigger;
     triggerColumnId?: string;
+    triggerGroupId?: string;
     triggerValue?: unknown;
     conditionColumnId?: string;
     conditionOperator?: AutomationOperator;
     conditionValue?: unknown;
     action: AutomationAction;
     actionColumnId?: string;
+    actionGroupId?: string;
     actionValue?: unknown;
   }) => request<AutomationRecipe>("/automations", { method: "POST", body: JSON.stringify(data) }),
   toggleRecipe: (id: string, enabled: boolean) =>
@@ -115,10 +131,10 @@ export const api = {
   listRuns: (recipeId: string) => request<AutomationRun[]>(`/automations/${recipeId}/runs`),
 
   listWidgets: (boardId: string) => request<DashboardWidget[]>(`/dashboards/board/${boardId}`),
-  createWidget: (boardId: string, name: string, type: DashboardWidgetType, columnId: string) =>
+  createWidget: (boardId: string, name: string, type: DashboardWidgetType, columnId: string, targetLabel?: string) =>
     request<DashboardWidget>("/dashboards", {
       method: "POST",
-      body: JSON.stringify({ boardId, name, type, config: { columnId } }),
+      body: JSON.stringify({ boardId, name, type, config: { columnId, targetLabel } }),
     }),
   deleteWidget: (id: string) => request<void>(`/dashboards/${id}`, { method: "DELETE" }),
 };

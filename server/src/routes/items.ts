@@ -25,11 +25,23 @@ itemsRouter.post("/", async (req, res) => {
 });
 
 itemsRouter.patch("/:id", async (req, res) => {
-  const schema = z.object({ name: z.string().min(1).optional(), archived: z.boolean().optional() });
+  const schema = z.object({
+    name: z.string().min(1).optional(),
+    archived: z.boolean().optional(),
+    groupId: z.string().optional(),
+  });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json(parsed.error.flatten());
 
+  const before = await prisma.item.findUnique({ where: { id: req.params.id } });
+  if (!before) return res.status(404).json({ error: "item não encontrado" });
+
   const item = await prisma.item.update({ where: { id: req.params.id }, data: parsed.data });
+
+  if (parsed.data.groupId && parsed.data.groupId !== before.groupId) {
+    await runAutomations({ boardId: item.boardId, item, movedToGroupId: parsed.data.groupId });
+  }
+
   res.json(item);
 });
 

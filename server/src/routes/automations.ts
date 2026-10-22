@@ -4,21 +4,28 @@ import { prisma } from "../db.js";
 
 export const automationsRouter = Router();
 
-const triggerEnum = ["STATUS_CHANGES_TO", "ANY_COLUMN_CHANGES", "ITEM_CREATED"] as const;
+const triggerEnum = [
+  "STATUS_CHANGES_TO",
+  "ANY_COLUMN_CHANGES",
+  "ITEM_CREATED",
+  "ITEM_MOVED_TO_GROUP",
+] as const;
 const operatorEnum = ["EQUALS", "NOT_EQUALS", "GREATER_THAN", "LESS_THAN"] as const;
-const actionEnum = ["CHANGE_COLUMN", "NOTIFY", "CREATE_ITEM", "ARCHIVE_ITEM"] as const;
+const actionEnum = ["CHANGE_COLUMN", "NOTIFY", "CREATE_ITEM", "ARCHIVE_ITEM", "MOVE_ITEM_TO_GROUP"] as const;
 
 const recipeSchema = z.object({
   boardId: z.string(),
   name: z.string().min(1),
   trigger: z.enum(triggerEnum),
   triggerColumnId: z.string().optional(),
+  triggerGroupId: z.string().optional(),
   triggerValue: z.any().optional(),
   conditionColumnId: z.string().optional(),
   conditionOperator: z.enum(operatorEnum).optional(),
   conditionValue: z.any().optional(),
   action: z.enum(actionEnum),
   actionColumnId: z.string().optional(),
+  actionGroupId: z.string().optional(),
   actionValue: z.any().optional(),
 });
 
@@ -41,12 +48,14 @@ automationsRouter.post("/", async (req, res) => {
       name: d.name,
       trigger: d.trigger,
       triggerColumnId: d.triggerColumnId,
+      triggerGroupId: d.triggerGroupId,
       triggerValue: d.triggerValue !== undefined ? JSON.stringify(d.triggerValue) : null,
       conditionColumnId: d.conditionColumnId,
       conditionOperator: d.conditionOperator,
       conditionValue: d.conditionValue !== undefined ? JSON.stringify(d.conditionValue) : null,
       action: d.action,
       actionColumnId: d.actionColumnId,
+      actionGroupId: d.actionGroupId,
       actionValue: d.actionValue !== undefined ? JSON.stringify(d.actionValue) : null,
     },
   });

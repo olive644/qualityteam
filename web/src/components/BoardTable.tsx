@@ -2,7 +2,17 @@ import { Fragment, useState } from "react";
 import { api, type BoardDetail, type ColumnType } from "../api.js";
 import ColumnCell from "./ColumnCell.js";
 
-const COLUMN_TYPES: ColumnType[] = ["TEXT", "STATUS", "PEOPLE", "DATE", "NUMBERS", "DROPDOWN"];
+const COLUMN_TYPES: ColumnType[] = [
+  "TEXT",
+  "LONG_TEXT",
+  "STATUS",
+  "PEOPLE",
+  "DATE",
+  "TIMELINE",
+  "NUMBERS",
+  "DROPDOWN",
+  "LINK",
+];
 
 export default function BoardTable({ board, onChange }: { board: BoardDetail; onChange: () => void }) {
   const [newColTitle, setNewColTitle] = useState("");

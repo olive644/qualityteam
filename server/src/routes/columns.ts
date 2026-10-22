@@ -4,7 +4,17 @@ import { prisma } from "../db.js";
 
 export const columnsRouter = Router();
 
-const columnTypes = ["TEXT", "STATUS", "PEOPLE", "DATE", "NUMBERS", "DROPDOWN"] as const;
+const columnTypes = [
+  "TEXT",
+  "LONG_TEXT",
+  "STATUS",
+  "PEOPLE",
+  "DATE",
+  "TIMELINE",
+  "NUMBERS",
+  "DROPDOWN",
+  "LINK",
+] as const;
 
 columnsRouter.post("/", async (req, res) => {
   const schema = z.object({
