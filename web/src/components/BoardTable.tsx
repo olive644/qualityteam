@@ -6,6 +6,7 @@ const COLUMN_TYPES: ColumnType[] = [
   "TEXT",
   "LONG_TEXT",
   "STATUS",
+  "PRIORITY",
   "PEOPLE",
   "DATE",
   "TIMELINE",

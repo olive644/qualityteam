@@ -11,7 +11,14 @@ const triggerEnum = [
   "ITEM_MOVED_TO_GROUP",
 ] as const;
 const operatorEnum = ["EQUALS", "NOT_EQUALS", "GREATER_THAN", "LESS_THAN"] as const;
-const actionEnum = ["CHANGE_COLUMN", "NOTIFY", "CREATE_ITEM", "ARCHIVE_ITEM", "MOVE_ITEM_TO_GROUP"] as const;
+const actionEnum = [
+  "CHANGE_COLUMN",
+  "NOTIFY",
+  "CREATE_ITEM",
+  "ARCHIVE_ITEM",
+  "MOVE_ITEM_TO_GROUP",
+  "SET_DATE",
+] as const;
 
 const recipeSchema = z.object({
   boardId: z.string(),

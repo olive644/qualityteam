@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { api, type BoardDetail, type DashboardWidget, type DashboardWidgetType } from "../api.js";
 
+const CHART_COLORS = ["#0073ea", "#00c875", "#fdab3d", "#e2445c", "#a25ddc", "#579bfc", "#ffcb00", "#ff5ac4"];
+
 export default function DashboardPanel({ board }: { board: BoardDetail }) {
   const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
   const [name, setName] = useState("");
@@ -88,15 +90,32 @@ export default function DashboardPanel({ board }: { board: BoardDetail }) {
                 </p>
               </div>
             )}
-            {w.type === "COUNT_BY_COLUMN" && (
-              <ul>
-                {Object.entries(w.data?.counts ?? {}).map(([label, count]) => (
-                  <li key={label}>
-                    {label}: <strong>{count}</strong>
-                  </li>
-                ))}
-              </ul>
-            )}
+            {w.type === "COUNT_BY_COLUMN" && (() => {
+              const entries = Object.entries(w.data?.counts ?? {});
+              const max = Math.max(1, ...entries.map(([, count]) => count));
+              return (
+                <div style={{ marginTop: 4 }}>
+                  {entries.map(([label, count], i) => (
+                    <div className="bar-chart-row" key={label}>
+                      <span className="bar-chart-label" title={label}>
+                        {label}
+                      </span>
+                      <span className="bar-chart-track">
+                        <span
+                          className="bar-chart-fill"
+                          style={{
+                            width: `${(count / max) * 100}%`,
+                            background: CHART_COLORS[i % CHART_COLORS.length],
+                          }}
+                        />
+                      </span>
+                      <span className="bar-chart-count">{count}</span>
+                    </div>
+                  ))}
+                  {entries.length === 0 && <p className="muted">Sem dados ainda.</p>}
+                </div>
+              );
+            })()}
           </div>
         ))}
       </div>

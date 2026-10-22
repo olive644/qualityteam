@@ -21,6 +21,7 @@ export type ColumnType =
   | "TEXT"
   | "LONG_TEXT"
   | "STATUS"
+  | "PRIORITY"
   | "PEOPLE"
   | "DATE"
   | "TIMELINE"
@@ -53,7 +54,13 @@ export type BoardDetail = Board & { groups: Group[]; columns: BoardColumn[]; ite
 
 export type AutomationTrigger = "STATUS_CHANGES_TO" | "ANY_COLUMN_CHANGES" | "ITEM_CREATED" | "ITEM_MOVED_TO_GROUP";
 export type AutomationOperator = "EQUALS" | "NOT_EQUALS" | "GREATER_THAN" | "LESS_THAN";
-export type AutomationAction = "CHANGE_COLUMN" | "NOTIFY" | "CREATE_ITEM" | "ARCHIVE_ITEM" | "MOVE_ITEM_TO_GROUP";
+export type AutomationAction =
+  | "CHANGE_COLUMN"
+  | "NOTIFY"
+  | "CREATE_ITEM"
+  | "ARCHIVE_ITEM"
+  | "MOVE_ITEM_TO_GROUP"
+  | "SET_DATE";
 
 export type AutomationRecipe = {
   id: string;

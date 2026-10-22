@@ -7,6 +7,14 @@ export const STATUS_CYCLE: { label: string; color: string }[] = [
   { label: "Travado", color: "#e2445c" },
 ];
 
+export const PRIORITY_CYCLE: { label: string; color: string }[] = [
+  { label: "Nenhuma", color: "#c4c4c4" },
+  { label: "Baixa", color: "#579bfc" },
+  { label: "Média", color: "#ffcb00" },
+  { label: "Alta", color: "#fdab3d" },
+  { label: "Crítica", color: "#ff5ac4" },
+];
+
 function parseValue(raw: string | undefined): any {
   if (!raw) return null;
   try {
@@ -33,20 +41,21 @@ export default function ColumnCell({
     onChange();
   }
 
-  if (column.type === "STATUS") {
+  if (column.type === "STATUS" || column.type === "PRIORITY") {
+    const cycle = column.type === "STATUS" ? STATUS_CYCLE : PRIORITY_CYCLE;
     const current = value?.label as string | undefined;
-    const idx = STATUS_CYCLE.findIndex((s) => s.label === current);
-    const style = STATUS_CYCLE[idx] ?? { label: "Vazio", color: "#c4c4c4" };
+    const idx = cycle.findIndex((s) => s.label === current);
+    const style = cycle[idx] ?? { label: "Vazio", color: "#c4c4c4" };
     return (
       <td>
         <span
           className="status-pill"
           style={{ background: style.color }}
           onClick={() => {
-            const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+            const next = cycle[(idx + 1) % cycle.length];
             setValue({ label: next.label, color: next.color });
           }}
-          title="clique para avançar o status"
+          title="clique para avançar"
         >
           {current ?? "Vazio"}
         </span>

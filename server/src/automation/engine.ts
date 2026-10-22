@@ -93,6 +93,16 @@ async function runAction(recipe: AutomationRecipe, event: ChangeEvent): Promise<
       });
       return `coluna ${recipe.actionColumnId} atualizada no item ${event.item.id}`;
     }
+    case "SET_DATE": {
+      if (!recipe.actionColumnId) return "ação sem coluna de data configurada";
+      const today = new Date().toISOString().slice(0, 10);
+      await prisma.columnValue.upsert({
+        where: { itemId_columnId: { itemId: event.item.id, columnId: recipe.actionColumnId } },
+        create: { itemId: event.item.id, columnId: recipe.actionColumnId, value: JSON.stringify(today) },
+        update: { value: JSON.stringify(today) },
+      });
+      return `coluna ${recipe.actionColumnId} definida para hoje (${today})`;
+    }
     case "MOVE_ITEM_TO_GROUP": {
       if (!recipe.actionGroupId) return "ação sem grupo de destino configurado";
       await prisma.item.update({ where: { id: event.item.id }, data: { groupId: recipe.actionGroupId } });

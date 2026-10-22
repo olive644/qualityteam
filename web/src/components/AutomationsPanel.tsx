@@ -9,7 +9,14 @@ import {
 } from "../api.js";
 
 const TRIGGERS: AutomationTrigger[] = ["STATUS_CHANGES_TO", "ANY_COLUMN_CHANGES", "ITEM_CREATED", "ITEM_MOVED_TO_GROUP"];
-const ACTIONS: AutomationAction[] = ["CHANGE_COLUMN", "NOTIFY", "CREATE_ITEM", "ARCHIVE_ITEM", "MOVE_ITEM_TO_GROUP"];
+const ACTIONS: AutomationAction[] = [
+  "CHANGE_COLUMN",
+  "NOTIFY",
+  "CREATE_ITEM",
+  "ARCHIVE_ITEM",
+  "MOVE_ITEM_TO_GROUP",
+  "SET_DATE",
+];
 const OPERATORS: AutomationOperator[] = ["EQUALS", "NOT_EQUALS", "GREATER_THAN", "LESS_THAN"];
 
 function describe(recipe: AutomationRecipe, board: BoardDetail): string {
@@ -38,6 +45,8 @@ function describe(recipe: AutomationRecipe, board: BoardDetail): string {
     sentence += `define "${colName(recipe.actionColumnId)}" = ${JSON.stringify(v)}`;
   } else if (recipe.action === "MOVE_ITEM_TO_GROUP") {
     sentence += `move o item para o grupo "${groupName(recipe.actionGroupId)}"`;
+  } else if (recipe.action === "SET_DATE") {
+    sentence += `define "${colName(recipe.actionColumnId)}" para hoje`;
   } else if (recipe.action === "ARCHIVE_ITEM") {
     sentence += "arquiva o item";
   } else if (recipe.action === "CREATE_ITEM") {
@@ -91,7 +100,7 @@ export default function AutomationsPanel({ board }: { board: BoardDetail }) {
       conditionOperator: useCondition ? conditionOperator : undefined,
       conditionValue: useCondition ? safeNumberOrString(conditionValue) : undefined,
       action,
-      actionColumnId: action === "CHANGE_COLUMN" ? actionColumnId : undefined,
+      actionColumnId: action === "CHANGE_COLUMN" || action === "SET_DATE" ? actionColumnId : undefined,
       actionGroupId: action === "MOVE_ITEM_TO_GROUP" ? actionGroupId : undefined,
       actionValue:
         action === "CHANGE_COLUMN" || action === "CREATE_ITEM" || action === "NOTIFY" ? actionValue : undefined,
@@ -207,6 +216,16 @@ export default function AutomationsPanel({ board }: { board: BoardDetail }) {
               value={actionValue}
               onChange={(e) => setActionValue(e.target.value)}
             />
+          )}
+          {action === "SET_DATE" && (
+            <select value={actionColumnId} onChange={(e) => setActionColumnId(e.target.value)}>
+              <option value="">coluna de data…</option>
+              {board.columns.filter((c) => c.type === "DATE").map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
           )}
           {action === "MOVE_ITEM_TO_GROUP" && (
             <select value={actionGroupId} onChange={(e) => setActionGroupId(e.target.value)}>
