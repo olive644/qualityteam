@@ -1,0 +1,9 @@
+{
+  "installCommand": "npm install --prefix server && npm install --prefix web",
+  "buildCommand": "cd server && npx prisma generate && npx prisma db push --accept-data-loss --skip-generate && cd ../web && npm run build",
+  "outputDirectory": "web/dist",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
+}
