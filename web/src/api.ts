@@ -13,7 +13,13 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export type Board = { id: string; name: string; description?: string | null; createdAt: string };
+export type Board = {
+  id: string;
+  name: string;
+  description?: string | null;
+  createdAt: string;
+  itemCount?: number;
+};
 
 export type Group = { id: string; boardId: string; name: string; color: string; position: number };
 
@@ -95,6 +101,15 @@ export type AutomationRecipe = {
 
 export type AutomationRun = { id: string; recipeId: string; itemId: string; summary: string; createdAt: string };
 
+export type Person = { id: string; name: string; color: string; email?: string | null; createdAt: string };
+
+export type WorkloadEntry = {
+  person: Person;
+  total: number;
+  byStatus: Record<string, number>;
+  items: { itemId: string; itemName: string; boardId: string; boardName: string; statusLabel: string }[];
+};
+
 export type DashboardWidgetType = "COUNT_BY_COLUMN" | "NUMBER_SUM" | "BATTERY" | "TIMELINE_GANTT";
 
 export type DashboardWidget = {
@@ -169,4 +184,11 @@ export const api = {
       body: JSON.stringify({ boardId, name, type, config: { columnId, targetLabel } }),
     }),
   deleteWidget: (id: string) => request<void>(`/dashboards/${id}`, { method: "DELETE" }),
+
+  listPeople: () => request<Person[]>("/people"),
+  createPerson: (name: string, color: string, email?: string) =>
+    request<Person>("/people", { method: "POST", body: JSON.stringify({ name, color, email }) }),
+  deletePerson: (id: string) => request<void>(`/people/${id}`, { method: "DELETE" }),
+
+  getWorkload: () => request<WorkloadEntry[]>("/workload"),
 };

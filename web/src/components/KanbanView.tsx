@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { api, type BoardDetail } from "../api.js";
+import { api, type BoardDetail, type Person } from "../api.js";
 import { labelsForColumn } from "./ColumnCell.js";
+import { Avatar } from "../avatar.js";
 
 function parseValue(raw: string | undefined): any {
   if (!raw) return null;
@@ -11,7 +12,16 @@ function parseValue(raw: string | undefined): any {
   }
 }
 
-export default function KanbanView({ board, onChange }: { board: BoardDetail; onChange: () => void }) {
+export default function KanbanView({
+  board,
+  people,
+  onChange,
+}: {
+  board: BoardDetail;
+  people: Person[];
+  onChange: () => void;
+}) {
+  const peopleColumn = board.columns.find((c) => c.type === "PEOPLE");
   const statusColumns = board.columns.filter((c) => c.type === "STATUS");
   const [selectedId, setSelectedId] = useState<string>("");
   const statusColumn = statusColumns.find((c) => c.id === selectedId) ?? statusColumns[0];
@@ -73,9 +83,23 @@ export default function KanbanView({ board, onChange }: { board: BoardDetail; on
             >
               {lane.label} <span style={{ opacity: 0.8 }}>({laneItems.length})</span>
             </div>
-            {laneItems.map((item) => (
+            {laneItems.map((item) => {
+              const assigneeIds: string[] = peopleColumn
+                ? parseValue(item.columnValues.find((v) => v.columnId === peopleColumn.id)?.value) ?? []
+                : [];
+              const assignees = assigneeIds
+                .map((id) => people.find((p) => p.id === id))
+                .filter((p): p is Person => Boolean(p));
+              return (
               <div key={item.id} className="card" style={{ padding: 10, marginBottom: 8 }}>
                 <div style={{ marginBottom: 6 }}>{item.name}</div>
+                {assignees.length > 0 && (
+                  <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
+                    {assignees.map((p) => (
+                      <Avatar key={p.id} name={p.name} color={p.color} size={20} />
+                    ))}
+                  </div>
+                )}
                 <select
                   value={lane.label}
                   onChange={(e) => {
@@ -91,7 +115,8 @@ export default function KanbanView({ board, onChange }: { board: BoardDetail; on
                   ))}
                 </select>
               </div>
-            ))}
+              );
+            })}
             {laneItems.length === 0 && <p className="muted" style={{ fontSize: 12 }}>Sem itens</p>}
           </div>
         );

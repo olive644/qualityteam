@@ -1,4 +1,6 @@
-import { api, parseColumnLabels, type BoardColumn, type ColumnLabel, type Item } from "../api.js";
+import { useState } from "react";
+import { api, parseColumnLabels, type BoardColumn, type ColumnLabel, type Item, type Person } from "../api.js";
+import { Avatar } from "../avatar.js";
 
 export const DEFAULT_STATUS_LABELS: ColumnLabel[] = [
   { label: "Não iniciado", color: "#c4c4c4" },
@@ -33,18 +35,85 @@ function parseValue(raw: string | undefined): any {
 export default function ColumnCell({
   item,
   column,
+  people,
   onChange,
 }: {
   item: Item;
   column: BoardColumn;
+  people?: Person[];
   onChange: () => void;
 }) {
   const cv = item.columnValues.find((v) => v.columnId === column.id);
   const value = parseValue(cv?.value);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   async function setValue(v: unknown) {
     await api.setColumnValue(item.id, column.id, v);
     onChange();
+  }
+
+  if (column.type === "PEOPLE") {
+    const assigneeIds: string[] = Array.isArray(value) ? value : [];
+    const assignees = assigneeIds
+      .map((id) => people?.find((p) => p.id === id))
+      .filter((p): p is Person => Boolean(p));
+
+    function toggle(personId: string) {
+      const next = assigneeIds.includes(personId)
+        ? assigneeIds.filter((id) => id !== personId)
+        : [...assigneeIds, personId];
+      setValue(next);
+    }
+
+    return (
+      <td style={{ position: "relative" }}>
+        <div
+          style={{ display: "flex", gap: 4, alignItems: "center", cursor: "pointer", minHeight: 28 }}
+          onClick={() => setPickerOpen((o) => !o)}
+        >
+          {assignees.map((p) => (
+            <Avatar key={p.id} name={p.name} color={p.color} size={24} />
+          ))}
+          {assignees.length === 0 && <span className="muted">+ Atribuir</span>}
+        </div>
+        {pickerOpen && (
+          <>
+            <div
+              style={{ position: "fixed", inset: 0, zIndex: 9 }}
+              onClick={() => setPickerOpen(false)}
+            />
+            <div
+              className="card"
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                zIndex: 10,
+                minWidth: 200,
+                padding: 8,
+                margin: 0,
+              }}
+            >
+              {(!people || people.length === 0) && (
+                <p className="muted" style={{ margin: 4, whiteSpace: "normal" }}>
+                  Nenhuma pessoa cadastrada — crie em "Pessoas".
+                </p>
+              )}
+              {people?.map((p) => (
+                <label
+                  key={p.id}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 4px", cursor: "pointer" }}
+                >
+                  <input type="checkbox" checked={assigneeIds.includes(p.id)} onChange={() => toggle(p.id)} />
+                  <Avatar name={p.name} color={p.color} size={22} />
+                  <span>{p.name}</span>
+                </label>
+              ))}
+            </div>
+          </>
+        )}
+      </td>
+    );
   }
 
   if (column.type === "STATUS" || column.type === "PRIORITY") {
@@ -125,7 +194,7 @@ export default function ColumnCell({
     );
   }
 
-  // TEXT, PEOPLE, DROPDOWN, LINK — simple text input is enough for an MVP
+  // TEXT, DROPDOWN, LINK — simple text input is enough for an MVP
   return (
     <td>
       <input

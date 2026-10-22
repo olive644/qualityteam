@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { api, type BoardDetail, type ColumnType } from "../api.js";
+import { api, type BoardDetail, type ColumnType, type Person } from "../api.js";
 import { COLUMN_TYPE_LABELS } from "../labels.js";
 import ColumnCell from "./ColumnCell.js";
 import ColumnLabelsEditor from "./ColumnLabelsEditor.js";
@@ -17,7 +17,15 @@ const COLUMN_TYPES: ColumnType[] = [
   "LINK",
 ];
 
-export default function BoardTable({ board, onChange }: { board: BoardDetail; onChange: () => void }) {
+export default function BoardTable({
+  board,
+  people,
+  onChange,
+}: {
+  board: BoardDetail;
+  people: Person[];
+  onChange: () => void;
+}) {
   const [newColTitle, setNewColTitle] = useState("");
   const [newColType, setNewColType] = useState<ColumnType>("STATUS");
   const [newGroupName, setNewGroupName] = useState("");
@@ -115,7 +123,9 @@ export default function BoardTable({ board, onChange }: { board: BoardDetail; on
                         ×
                       </button>
                     </td>
-                    {board.columns.map((col) => <ColumnCell key={col.id} item={item} column={col} onChange={onChange} />)}
+                    {board.columns.map((col) => (
+                      <ColumnCell key={col.id} item={item} column={col} people={people} onChange={onChange} />
+                    ))}
                   </tr>
                 ))}
                 <tr>
