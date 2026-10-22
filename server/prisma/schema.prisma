@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// SQLite has no native enum support in Prisma, so these are plain Strings.
+// The allowed values are validated at the API layer (zod, in src/routes/*).
+//
+// ColumnType: TEXT | STATUS | PEOPLE | DATE | NUMBERS | DROPDOWN
+// AutomationTrigger: STATUS_CHANGES_TO | ANY_COLUMN_CHANGES | ITEM_CREATED
+// AutomationConditionOperator: EQUALS | NOT_EQUALS | GREATER_THAN | LESS_THAN
+// AutomationAction: CHANGE_COLUMN | NOTIFY | CREATE_ITEM | ARCHIVE_ITEM
+// DashboardWidgetType: COUNT_BY_COLUMN | NUMBER_SUM
+
+model Board {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  groups      Group[]
+  columns     Column[]
+  items       Item[]
+  recipes     AutomationRecipe[]
+  widgets     DashboardWidget[]
+}
+
+model Group {
+  id        String   @id @default(cuid())
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  name      String
+  color     String   @default("#579bfc")
+  position  Int      @default(0)
+  items     Item[]
+}
+
+model Column {
+  id        String   @id @default(cuid())
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  title     String
+  type      String
+  // JSON-encoded config, e.g. status labels or dropdown options
+  settings  String   @default("{}")
+  position  Int      @default(0)
+  values    ColumnValue[]
+}
+
+model Item {
+  id         String   @id @default(cuid())
+  boardId    String
+  board      Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  groupId    String
+  group      Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name       String
+  archived   Boolean  @default(false)
+  position   Int      @default(0)
+  createdAt  DateTime @default(now())
+  columnValues ColumnValue[]
+}
+
+model ColumnValue {
+  id       String @id @default(cuid())
+  itemId   String
+  item     Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  columnId String
+  column   Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  // JSON-encoded value, shape depends on the column type
+  value    String @default("null")
+
+  @@unique([itemId, columnId])
+}
+
+model AutomationRecipe {
+  id                    String   @id @default(cuid())
+  boardId               String
+  board                 Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  name                  String
+  enabled               Boolean  @default(true)
+  trigger               String
+  triggerColumnId       String?
+  triggerValue          String?
+  conditionColumnId     String?
+  conditionOperator     String?
+  conditionValue        String?
+  action                String
+  actionColumnId        String?
+  actionValue           String?
+  createdAt             DateTime @default(now())
+  runs                  AutomationRun[]
+}
+
+model AutomationRun {
+  id        String           @id @default(cuid())
+  recipeId  String
+  recipe    AutomationRecipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  itemId    String
+  summary   String
+  createdAt DateTime         @default(now())
+}
+
+model DashboardWidget {
+  id       String   @id @default(cuid())
+  boardId  String
+  board    Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  name     String
+  type     String
+  // JSON-encoded config, e.g. { "columnId": "..." }
+  config   String   @default("{}")
+  position Int      @default(0)
+}
