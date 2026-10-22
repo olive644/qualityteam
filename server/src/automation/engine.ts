@@ -103,6 +103,20 @@ async function runAction(recipe: AutomationRecipe, event: ChangeEvent): Promise<
       });
       return `coluna ${recipe.actionColumnId} definida para hoje (${today})`;
     }
+    case "PUSH_DATE": {
+      if (!recipe.actionColumnId) return "ação sem coluna de data configurada";
+      const days = Number(parseJson<number | string>(recipe.actionValue, 1));
+      const existing = await getColumnValue(event.item.id, recipe.actionColumnId);
+      const base = typeof existing === "string" && existing ? new Date(`${existing}T00:00:00Z`) : new Date();
+      base.setUTCDate(base.getUTCDate() + (Number.isNaN(days) ? 0 : days));
+      const newDate = base.toISOString().slice(0, 10);
+      await prisma.columnValue.upsert({
+        where: { itemId_columnId: { itemId: event.item.id, columnId: recipe.actionColumnId } },
+        create: { itemId: event.item.id, columnId: recipe.actionColumnId, value: JSON.stringify(newDate) },
+        update: { value: JSON.stringify(newDate) },
+      });
+      return `coluna ${recipe.actionColumnId} empurrada ${days >= 0 ? "+" : ""}${days} dia(s) → ${newDate}`;
+    }
     case "MOVE_ITEM_TO_GROUP": {
       if (!recipe.actionGroupId) return "ação sem grupo de destino configurado";
       await prisma.item.update({ where: { id: event.item.id }, data: { groupId: recipe.actionGroupId } });

@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { api, type BoardDetail } from "../api.js";
-import { STATUS_CYCLE } from "./ColumnCell.js";
+import { labelsForColumn } from "./ColumnCell.js";
 
 function parseValue(raw: string | undefined): any {
   if (!raw) return null;
@@ -10,20 +11,22 @@ function parseValue(raw: string | undefined): any {
   }
 }
 
-const LANES = [...STATUS_CYCLE, { label: "Vazio", color: "#c4c4c4" }];
-
 export default function KanbanView({ board, onChange }: { board: BoardDetail; onChange: () => void }) {
-  const statusColumn = board.columns.find((c) => c.type === "STATUS");
+  const statusColumns = board.columns.filter((c) => c.type === "STATUS");
+  const [selectedId, setSelectedId] = useState<string>("");
+  const statusColumn = statusColumns.find((c) => c.id === selectedId) ?? statusColumns[0];
 
   if (!statusColumn) {
     return (
       <p className="muted">
-        Crie uma coluna do tipo <strong>STATUS</strong> no quadro pra usar a visualização Kanban — ela agrupa os
-        itens pelas etiquetas dessa coluna, assim como a visualização Kanban do monday.com agrupa por status.
+        Crie uma coluna do tipo <strong>Status</strong> no quadro pra usar a visualização Kanban — ela agrupa os
+        itens pelas etiquetas dessa coluna, exatamente como as etiquetas que você configurar nela, assim como no
+        monday.com.
       </p>
     );
   }
 
+  const LANES = [...labelsForColumn(statusColumn), { label: "Vazio", color: "#c4c4c4" }];
   const items = board.items;
   const columnId = statusColumn.id;
 
@@ -39,8 +42,21 @@ export default function KanbanView({ board, onChange }: { board: BoardDetail; on
   }
 
   return (
-    <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 8 }}>
-      {LANES.map((lane) => {
+    <div>
+      {statusColumns.length > 1 && (
+        <div className="toolbar">
+          <span className="muted">Agrupar por</span>
+          <select value={statusColumn.id} onChange={(e) => setSelectedId(e.target.value)}>
+            {statusColumns.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 8 }}>
+        {LANES.map((lane) => {
         const laneItems = items.filter((i) => laneOf(i) === lane.label);
         return (
           <div key={lane.label} style={{ minWidth: 220, flexShrink: 0 }}>
@@ -79,7 +95,8 @@ export default function KanbanView({ board, onChange }: { board: BoardDetail; on
             {laneItems.length === 0 && <p className="muted" style={{ fontSize: 12 }}>Sem itens</p>}
           </div>
         );
-      })}
+        })}
+      </div>
     </div>
   );
 }

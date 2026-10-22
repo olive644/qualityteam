@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
+import { defaultSettingsFor } from "../columnDefaults.js";
 
 export const boardsRouter = Router();
 
@@ -17,6 +18,23 @@ boardsRouter.post("/", async (req, res) => {
   const board = await prisma.board.create({ data: parsed.data });
   // every board starts with one default group so items have somewhere to live
   await prisma.group.create({ data: { boardId: board.id, name: "Grupo principal" } });
+
+  // seed a starter set of columns, mirroring what a new monday.com board ships with
+  const starterColumns: { title: string; type: string }[] = [
+    { title: "Status", type: "STATUS" },
+    { title: "Responsável", type: "PEOPLE" },
+    { title: "Data", type: "DATE" },
+  ];
+  await prisma.column.createMany({
+    data: starterColumns.map((c, i) => ({
+      boardId: board.id,
+      title: c.title,
+      type: c.type,
+      settings: JSON.stringify(defaultSettingsFor(c.type)),
+      position: i,
+    })),
+  });
+
   res.status(201).json(board);
 });
 

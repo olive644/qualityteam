@@ -29,6 +29,8 @@ export type ColumnType =
   | "DROPDOWN"
   | "LINK";
 
+export type ColumnLabel = { label: string; color: string };
+
 export type BoardColumn = {
   id: string;
   boardId: string;
@@ -37,6 +39,16 @@ export type BoardColumn = {
   settings: string;
   position: number;
 };
+
+export function parseColumnLabels(column: BoardColumn): ColumnLabel[] | null {
+  try {
+    const parsed = JSON.parse(column.settings);
+    if (Array.isArray(parsed?.labels)) return parsed.labels;
+  } catch {
+    // fall through
+  }
+  return null;
+}
 
 export type ColumnValue = { id: string; itemId: string; columnId: string; value: string };
 
@@ -60,7 +72,8 @@ export type AutomationAction =
   | "CREATE_ITEM"
   | "ARCHIVE_ITEM"
   | "MOVE_ITEM_TO_GROUP"
-  | "SET_DATE";
+  | "SET_DATE"
+  | "PUSH_DATE";
 
 export type AutomationRecipe = {
   id: string;
@@ -82,7 +95,7 @@ export type AutomationRecipe = {
 
 export type AutomationRun = { id: string; recipeId: string; itemId: string; summary: string; createdAt: string };
 
-export type DashboardWidgetType = "COUNT_BY_COLUMN" | "NUMBER_SUM" | "BATTERY";
+export type DashboardWidgetType = "COUNT_BY_COLUMN" | "NUMBER_SUM" | "BATTERY" | "TIMELINE_GANTT";
 
 export type DashboardWidget = {
   id: string;
@@ -90,7 +103,14 @@ export type DashboardWidget = {
   name: string;
   type: DashboardWidgetType;
   config: { columnId: string; targetLabel?: string };
-  data: { counts?: Record<string, number>; sum?: number; percent?: number; matching?: number; total?: number } | null;
+  data: {
+    counts?: Record<string, number>;
+    sum?: number;
+    percent?: number;
+    matching?: number;
+    total?: number;
+    bars?: { name: string; start: string; end: string }[];
+  } | null;
 };
 
 export const api = {
@@ -104,6 +124,11 @@ export const api = {
 
   createColumn: (boardId: string, title: string, type: ColumnType) =>
     request<BoardColumn>("/columns", { method: "POST", body: JSON.stringify({ boardId, title, type }) }),
+
+  updateColumn: (id: string, data: { title?: string; settings?: Record<string, unknown> }) =>
+    request<BoardColumn>(`/columns/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+
+  deleteColumn: (id: string) => request<void>(`/columns/${id}`, { method: "DELETE" }),
 
   createItem: (boardId: string, groupId: string, name: string) =>
     request<Item>("/items", { method: "POST", body: JSON.stringify({ boardId, groupId, name }) }),

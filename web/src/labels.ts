@@ -34,4 +34,5 @@ export const ACTION_LABELS: Record<AutomationAction, string> = {
   ARCHIVE_ITEM: "arquivar o item",
   MOVE_ITEM_TO_GROUP: "mover o item para um grupo",
   SET_DATE: "definir uma data para hoje",
+  PUSH_DATE: "empurrar uma data (somar dias)",
 };

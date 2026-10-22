@@ -3,6 +3,43 @@ import { api, type BoardDetail, type DashboardWidget, type DashboardWidgetType }
 
 const CHART_COLORS = ["#0073ea", "#00c875", "#fdab3d", "#e2445c", "#a25ddc", "#579bfc", "#ffcb00", "#ff5ac4"];
 
+function GanttChart({ bars }: { bars: { name: string; start: string; end: string }[] }) {
+  if (bars.length === 0) return <p className="muted">Sem itens com cronograma preenchido ainda.</p>;
+
+  const starts = bars.map((b) => new Date(b.start).getTime());
+  const ends = bars.map((b) => new Date(b.end).getTime());
+  const min = Math.min(...starts);
+  const max = Math.max(...ends);
+  const span = Math.max(1, max - min);
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      {bars.map((b, i) => {
+        const left = ((new Date(b.start).getTime() - min) / span) * 100;
+        const width = Math.max(2, ((new Date(b.end).getTime() - new Date(b.start).getTime()) / span) * 100);
+        return (
+          <div key={b.name + i} style={{ marginBottom: 10, fontSize: 13 }}>
+            <div style={{ marginBottom: 3, color: "var(--muted)" }}>{b.name}</div>
+            <div style={{ background: "#eef0f5", borderRadius: 4, height: 16, position: "relative" }}>
+              <div
+                title={`${b.start} → ${b.end}`}
+                style={{
+                  position: "absolute",
+                  left: `${left}%`,
+                  width: `${width}%`,
+                  height: "100%",
+                  borderRadius: 4,
+                  background: CHART_COLORS[i % CHART_COLORS.length],
+                }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function DashboardPanel({ board }: { board: BoardDetail }) {
   const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
   const [name, setName] = useState("");
@@ -26,6 +63,10 @@ export default function DashboardPanel({ board }: { board: BoardDetail }) {
     reload();
   }
 
+  const columnOptions = type === "TIMELINE_GANTT" ? board.columns.filter((c) => c.type === "TIMELINE") : board.columns;
+  const ganttWidgets = widgets.filter((w) => w.type === "TIMELINE_GANTT");
+  const otherWidgets = widgets.filter((w) => w.type !== "TIMELINE_GANTT");
+
   return (
     <div>
       <div className="card">
@@ -36,10 +77,11 @@ export default function DashboardPanel({ board }: { board: BoardDetail }) {
             <option value="COUNT_BY_COLUMN">Gráfico (contagem por coluna)</option>
             <option value="NUMBER_SUM">Números (soma de coluna numérica)</option>
             <option value="BATTERY">Bateria (% com um valor-alvo)</option>
+            <option value="TIMELINE_GANTT">Cronograma (Gantt)</option>
           </select>
           <select value={columnId} onChange={(e) => setColumnId(e.target.value)}>
             <option value="">coluna…</option>
-            {board.columns.map((c) => (
+            {columnOptions.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.title}
               </option>
@@ -56,8 +98,27 @@ export default function DashboardPanel({ board }: { board: BoardDetail }) {
         </div>
       </div>
 
+      {ganttWidgets.map((w) => (
+        <div className="card" key={w.id}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <strong>{w.name}</strong>
+            <button
+              className="secondary"
+              style={{ padding: "2px 8px" }}
+              onClick={async () => {
+                await api.deleteWidget(w.id);
+                reload();
+              }}
+            >
+              ×
+            </button>
+          </div>
+          <GanttChart bars={w.data?.bars ?? []} />
+        </div>
+      ))}
+
       <div className="widget-grid">
-        {widgets.map((w) => (
+        {otherWidgets.map((w) => (
           <div className="card" key={w.id}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <strong>{w.name}</strong>

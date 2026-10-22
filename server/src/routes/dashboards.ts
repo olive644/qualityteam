@@ -4,7 +4,7 @@ import { prisma } from "../db.js";
 
 export const dashboardsRouter = Router();
 
-const widgetTypeEnum = ["COUNT_BY_COLUMN", "NUMBER_SUM", "BATTERY"] as const;
+const widgetTypeEnum = ["COUNT_BY_COLUMN", "NUMBER_SUM", "BATTERY", "TIMELINE_GANTT"] as const;
 
 dashboardsRouter.post("/", async (req, res) => {
   const schema = z.object({
@@ -85,6 +85,18 @@ dashboardsRouter.get("/board/:boardId", async (req, res) => {
       }
       const percent = items.length === 0 ? 0 : Math.round((matching / items.length) * 100);
       return { ...widget, config, data: { percent, matching, total: items.length } };
+    }
+
+    if (widget.type === "TIMELINE_GANTT") {
+      const bars: { name: string; start: string; end: string }[] = [];
+      for (const item of items) {
+        const cv = item.columnValues.find((v) => v.columnId === config.columnId);
+        const raw = cv ? JSON.parse(cv.value) : null;
+        if (raw?.start && raw?.end) {
+          bars.push({ name: item.name, start: raw.start, end: raw.end });
+        }
+      }
+      return { ...widget, config, data: { bars } };
     }
 
     return { ...widget, config, data: null };

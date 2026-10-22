@@ -1,19 +1,25 @@
-import { api, type BoardColumn, type Item } from "../api.js";
+import { api, parseColumnLabels, type BoardColumn, type ColumnLabel, type Item } from "../api.js";
 
-export const STATUS_CYCLE: { label: string; color: string }[] = [
+export const DEFAULT_STATUS_LABELS: ColumnLabel[] = [
   { label: "Não iniciado", color: "#c4c4c4" },
   { label: "Em progresso", color: "#fdab3d" },
   { label: "Done", color: "#00c875" },
   { label: "Travado", color: "#e2445c" },
 ];
 
-export const PRIORITY_CYCLE: { label: string; color: string }[] = [
+export const DEFAULT_PRIORITY_LABELS: ColumnLabel[] = [
   { label: "Nenhuma", color: "#c4c4c4" },
   { label: "Baixa", color: "#579bfc" },
   { label: "Média", color: "#ffcb00" },
   { label: "Alta", color: "#fdab3d" },
   { label: "Crítica", color: "#ff5ac4" },
 ];
+
+export function labelsForColumn(column: BoardColumn): ColumnLabel[] {
+  const custom = parseColumnLabels(column);
+  if (custom && custom.length > 0) return custom;
+  return column.type === "PRIORITY" ? DEFAULT_PRIORITY_LABELS : DEFAULT_STATUS_LABELS;
+}
 
 function parseValue(raw: string | undefined): any {
   if (!raw) return null;
@@ -42,7 +48,7 @@ export default function ColumnCell({
   }
 
   if (column.type === "STATUS" || column.type === "PRIORITY") {
-    const cycle = column.type === "STATUS" ? STATUS_CYCLE : PRIORITY_CYCLE;
+    const cycle = labelsForColumn(column);
     const current = value?.label as string | undefined;
     const idx = cycle.findIndex((s) => s.label === current);
     const style = cycle[idx] ?? { label: "Vazio", color: "#c4c4c4" };

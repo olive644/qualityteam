@@ -18,6 +18,7 @@ const actionEnum = [
   "ARCHIVE_ITEM",
   "MOVE_ITEM_TO_GROUP",
   "SET_DATE",
+  "PUSH_DATE",
 ] as const;
 
 const recipeSchema = z
@@ -46,11 +47,18 @@ const recipeSchema = z
     if (d.trigger === "STATUS_CHANGES_TO") {
       need(d.triggerValue !== undefined && d.triggerValue !== "", "triggerValue", "obrigatório para este gatilho");
     }
-    if (d.action === "CHANGE_COLUMN" || d.action === "SET_DATE") {
+    if (d.action === "CHANGE_COLUMN" || d.action === "SET_DATE" || d.action === "PUSH_DATE") {
       need(Boolean(d.actionColumnId), "actionColumnId", "obrigatório para esta ação");
     }
     if (d.action === "CHANGE_COLUMN" || d.action === "CREATE_ITEM" || d.action === "NOTIFY") {
       need(d.actionValue !== undefined && d.actionValue !== "", "actionValue", "obrigatório para esta ação");
+    }
+    if (d.action === "PUSH_DATE") {
+      need(
+        d.actionValue !== undefined && d.actionValue !== "" && !Number.isNaN(Number(d.actionValue)),
+        "actionValue",
+        "informe um número de dias"
+      );
     }
     if (d.action === "MOVE_ITEM_TO_GROUP") {
       need(Boolean(d.actionGroupId), "actionGroupId", "obrigatório para esta ação");

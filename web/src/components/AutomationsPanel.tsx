@@ -17,6 +17,7 @@ const ACTIONS: AutomationAction[] = [
   "ARCHIVE_ITEM",
   "MOVE_ITEM_TO_GROUP",
   "SET_DATE",
+  "PUSH_DATE",
 ];
 const OPERATORS: AutomationOperator[] = ["EQUALS", "NOT_EQUALS", "GREATER_THAN", "LESS_THAN"];
 
@@ -48,6 +49,9 @@ function describe(recipe: AutomationRecipe, board: BoardDetail): string {
     sentence += `move o item para o grupo "${groupName(recipe.actionGroupId)}"`;
   } else if (recipe.action === "SET_DATE") {
     sentence += `define "${colName(recipe.actionColumnId)}" para hoje`;
+  } else if (recipe.action === "PUSH_DATE") {
+    const v = recipe.actionValue ? JSON.parse(recipe.actionValue) : 0;
+    sentence += `soma ${v} dia(s) em "${colName(recipe.actionColumnId)}"`;
   } else if (recipe.action === "ARCHIVE_ITEM") {
     sentence += "arquiva o item";
   } else if (recipe.action === "CREATE_ITEM") {
@@ -99,11 +103,14 @@ export default function AutomationsPanel({ board }: { board: BoardDetail }) {
     if (useCondition && (!conditionColumnId || !conditionValue.trim())) {
       return "Preencha a coluna e o valor da condição, ou desmarque-a.";
     }
-    if ((action === "CHANGE_COLUMN" || action === "SET_DATE") && !actionColumnId) {
+    if ((action === "CHANGE_COLUMN" || action === "SET_DATE" || action === "PUSH_DATE") && !actionColumnId) {
       return "Escolha a coluna da ação.";
     }
     if (action === "CHANGE_COLUMN" && !actionValue.trim()) {
       return "Informe o novo valor da coluna.";
+    }
+    if (action === "PUSH_DATE" && (!actionValue.trim() || Number.isNaN(Number(actionValue)))) {
+      return "Informe um número de dias (pode ser negativo).";
     }
     if (action === "MOVE_ITEM_TO_GROUP" && !actionGroupId) {
       return "Escolha o grupo de destino.";
@@ -127,10 +134,15 @@ export default function AutomationsPanel({ board }: { board: BoardDetail }) {
       conditionOperator: useCondition ? conditionOperator : undefined,
       conditionValue: useCondition ? safeNumberOrString(conditionValue) : undefined,
       action,
-      actionColumnId: action === "CHANGE_COLUMN" || action === "SET_DATE" ? actionColumnId : undefined,
+      actionColumnId:
+        action === "CHANGE_COLUMN" || action === "SET_DATE" || action === "PUSH_DATE" ? actionColumnId : undefined,
       actionGroupId: action === "MOVE_ITEM_TO_GROUP" ? actionGroupId : undefined,
       actionValue:
-        action === "CHANGE_COLUMN" || action === "CREATE_ITEM" || action === "NOTIFY" ? actionValue : undefined,
+        action === "CHANGE_COLUMN" || action === "CREATE_ITEM" || action === "NOTIFY"
+          ? actionValue
+          : action === "PUSH_DATE"
+            ? Number(actionValue)
+            : undefined,
     });
     setName("");
     reload();
@@ -146,8 +158,110 @@ export default function AutomationsPanel({ board }: { board: BoardDetail }) {
     setRuns(await api.listRuns(recipeId));
   }
 
+  const statusColumn = board.columns.find((c) => c.type === "STATUS");
+  const dateColumn = board.columns.find((c) => c.type === "DATE");
+  const secondGroup = board.groups[1] ?? board.groups[0];
+
+  function applyTemplate(preset: {
+    name: string;
+    trigger: AutomationTrigger;
+    triggerColumnId?: string;
+    triggerValue?: string;
+    action: AutomationAction;
+    actionColumnId?: string;
+    actionGroupId?: string;
+    actionValue?: string;
+  }) {
+    setName(preset.name);
+    setTrigger(preset.trigger);
+    setTriggerColumnId(preset.triggerColumnId ?? "");
+    setTriggerValue(preset.triggerValue ?? "Done");
+    setUseCondition(false);
+    setAction(preset.action);
+    setActionColumnId(preset.actionColumnId ?? "");
+    setActionGroupId(preset.actionGroupId ?? "");
+    setActionValue(preset.actionValue ?? "");
+  }
+
+  const templates = [
+    {
+      label: "Status muda → notificar",
+      disabledReason: !statusColumn ? "precisa de uma coluna Status" : null,
+      apply: () =>
+        statusColumn &&
+        applyTemplate({
+          name: "Notificar quando status muda para Done",
+          trigger: "STATUS_CHANGES_TO",
+          triggerColumnId: statusColumn.id,
+          triggerValue: "Done",
+          action: "NOTIFY",
+          actionValue: "Item concluído!",
+        }),
+    },
+    {
+      label: "Status muda → mover de grupo",
+      disabledReason: !statusColumn || !secondGroup ? "precisa de uma coluna Status e um grupo" : null,
+      apply: () =>
+        statusColumn &&
+        secondGroup &&
+        applyTemplate({
+          name: "Mover para outro grupo quando status muda",
+          trigger: "STATUS_CHANGES_TO",
+          triggerColumnId: statusColumn.id,
+          triggerValue: "Done",
+          action: "MOVE_ITEM_TO_GROUP",
+          actionGroupId: secondGroup.id,
+        }),
+    },
+    {
+      label: "Item criado → definir data de hoje",
+      disabledReason: !dateColumn ? "precisa de uma coluna Data" : null,
+      apply: () =>
+        dateColumn &&
+        applyTemplate({
+          name: "Definir data de criação",
+          trigger: "ITEM_CREATED",
+          action: "SET_DATE",
+          actionColumnId: dateColumn.id,
+        }),
+    },
+    {
+      label: "Status muda → arquivar item",
+      disabledReason: !statusColumn ? "precisa de uma coluna Status" : null,
+      apply: () =>
+        statusColumn &&
+        applyTemplate({
+          name: "Arquivar quando travado",
+          trigger: "STATUS_CHANGES_TO",
+          triggerColumnId: statusColumn.id,
+          triggerValue: "Travado",
+          action: "ARCHIVE_ITEM",
+        }),
+    },
+  ];
+
   return (
     <div>
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>Receitas prontas</h3>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Clique numa receita pra pré-preencher o formulário abaixo — você ainda pode ajustar antes de criar.
+        </p>
+        <div className="toolbar">
+          {templates.map((t) => (
+            <button
+              key={t.label}
+              className="secondary"
+              disabled={Boolean(t.disabledReason)}
+              title={t.disabledReason ?? undefined}
+              onClick={t.apply}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Nova automação</h3>
         <div className="toolbar">
@@ -253,6 +367,25 @@ export default function AutomationsPanel({ board }: { board: BoardDetail }) {
                 </option>
               ))}
             </select>
+          )}
+          {action === "PUSH_DATE" && (
+            <>
+              <select value={actionColumnId} onChange={(e) => setActionColumnId(e.target.value)}>
+                <option value="">coluna de data…</option>
+                {board.columns.filter((c) => c.type === "DATE").map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="number"
+                placeholder="dias (ex: 7 ou -3)"
+                value={actionValue}
+                onChange={(e) => setActionValue(e.target.value)}
+                style={{ width: 120 }}
+              />
+            </>
           )}
           {action === "MOVE_ITEM_TO_GROUP" && (
             <select value={actionGroupId} onChange={(e) => setActionGroupId(e.target.value)}>

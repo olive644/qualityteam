@@ -2,6 +2,7 @@ import { Fragment, useState } from "react";
 import { api, type BoardDetail, type ColumnType } from "../api.js";
 import { COLUMN_TYPE_LABELS } from "../labels.js";
 import ColumnCell from "./ColumnCell.js";
+import ColumnLabelsEditor from "./ColumnLabelsEditor.js";
 
 const COLUMN_TYPES: ColumnType[] = [
   "TEXT",
@@ -21,6 +22,7 @@ export default function BoardTable({ board, onChange }: { board: BoardDetail; on
   const [newColType, setNewColType] = useState<ColumnType>("STATUS");
   const [newGroupName, setNewGroupName] = useState("");
   const [newItemByGroup, setNewItemByGroup] = useState<Record<string, string>>({});
+  const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
 
   async function addColumn() {
     if (!newColTitle.trim()) return;
@@ -61,12 +63,32 @@ export default function BoardTable({ board, onChange }: { board: BoardDetail; on
         <button onClick={addColumn}>+ Coluna</button>
       </div>
 
+      {editingColumnId && (
+        <ColumnLabelsEditor
+          column={board.columns.find((c) => c.id === editingColumnId)!}
+          onClose={() => setEditingColumnId(null)}
+          onSaved={onChange}
+        />
+      )}
+
       <table className="board-table">
         <thead>
           <tr>
             <th>Item</th>
             {board.columns.map((c) => (
-              <th key={c.id}>{c.title}</th>
+              <th key={c.id}>
+                {c.title}
+                {(c.type === "STATUS" || c.type === "PRIORITY") && (
+                  <button
+                    className="secondary"
+                    title="editar etiquetas"
+                    style={{ padding: "1px 6px", marginLeft: 6, fontSize: 11, fontWeight: 400 }}
+                    onClick={() => setEditingColumnId(c.id)}
+                  >
+                    ⚙
+                  </button>
+                )}
+              </th>
             ))}
           </tr>
         </thead>
