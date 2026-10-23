@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { api, parseColumnLabels, type BoardColumn, type ColumnLabel, type Item, type Person } from "../api.js";
 import { Avatar } from "../avatar.js";
 
@@ -46,6 +47,8 @@ export default function ColumnCell({
   const cv = item.columnValues.find((v) => v.columnId === column.id);
   const value = parseValue(cv?.value);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerPos, setPickerPos] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLDivElement>(null);
 
   async function setValue(v: unknown) {
     await api.setColumnValue(item.id, column.id, v);
@@ -65,53 +68,59 @@ export default function ColumnCell({
       setValue(next);
     }
 
+    function openPicker() {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (rect) setPickerPos({ top: rect.bottom + 4, left: rect.left });
+      setPickerOpen((o) => !o);
+    }
+
     return (
-      <td style={{ position: "relative" }}>
+      <td>
         <div
+          ref={triggerRef}
           style={{ display: "flex", gap: 4, alignItems: "center", cursor: "pointer", minHeight: 28 }}
-          onClick={() => setPickerOpen((o) => !o)}
+          onClick={openPicker}
         >
           {assignees.map((p) => (
             <Avatar key={p.id} name={p.name} color={p.color} size={24} />
           ))}
           {assignees.length === 0 && <span className="muted">+ Atribuir</span>}
         </div>
-        {pickerOpen && (
-          <>
-            <div
-              style={{ position: "fixed", inset: 0, zIndex: 9 }}
-              onClick={() => setPickerOpen(false)}
-            />
-            <div
-              className="card"
-              style={{
-                position: "absolute",
-                top: "100%",
-                left: 0,
-                zIndex: 10,
-                minWidth: 200,
-                padding: 8,
-                margin: 0,
-              }}
-            >
-              {(!people || people.length === 0) && (
-                <p className="muted" style={{ margin: 4, whiteSpace: "normal" }}>
-                  Nenhuma pessoa cadastrada — crie em "Pessoas".
-                </p>
-              )}
-              {people?.map((p) => (
-                <label
-                  key={p.id}
-                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 4px", cursor: "pointer" }}
-                >
-                  <input type="checkbox" checked={assigneeIds.includes(p.id)} onChange={() => toggle(p.id)} />
-                  <Avatar name={p.name} color={p.color} size={22} />
-                  <span>{p.name}</span>
-                </label>
-              ))}
-            </div>
-          </>
-        )}
+        {pickerOpen &&
+          createPortal(
+            <>
+              <div style={{ position: "fixed", inset: 0, zIndex: 999 }} onClick={() => setPickerOpen(false)} />
+              <div
+                className="card"
+                style={{
+                  position: "fixed",
+                  top: pickerPos.top,
+                  left: pickerPos.left,
+                  zIndex: 1000,
+                  minWidth: 200,
+                  padding: 8,
+                  margin: 0,
+                }}
+              >
+                {(!people || people.length === 0) && (
+                  <p className="muted" style={{ margin: 4, whiteSpace: "normal" }}>
+                    Nenhuma pessoa cadastrada — crie em "Pessoas".
+                  </p>
+                )}
+                {people?.map((p) => (
+                  <label
+                    key={p.id}
+                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 4px", cursor: "pointer" }}
+                  >
+                    <input type="checkbox" checked={assigneeIds.includes(p.id)} onChange={() => toggle(p.id)} />
+                    <Avatar name={p.name} color={p.color} size={22} />
+                    <span>{p.name}</span>
+                  </label>
+                ))}
+              </div>
+            </>,
+            document.body
+          )}
       </td>
     );
   }
