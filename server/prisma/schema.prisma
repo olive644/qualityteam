@@ -116,6 +116,7 @@ model AutomationRun {
 model Person {
   id        String   @id @default(cuid())
   name      String
+  role      String?
   color     String   @default("#579bfc")
   email     String?
   createdAt DateTime @default(now())

@@ -7,6 +7,7 @@ const PALETTE = ["#0073ea", "#00c875", "#fdab3d", "#e2445c", "#a25ddc", "#579bfc
 export default function PeoplePage() {
   const [people, setPeople] = useState<Person[]>([]);
   const [name, setName] = useState("");
+  const [role, setRole] = useState("");
   const [email, setEmail] = useState("");
   const [color, setColor] = useState(PALETTE[0]);
 
@@ -20,8 +21,9 @@ export default function PeoplePage() {
 
   async function create() {
     if (!name.trim()) return;
-    await api.createPerson(name.trim(), color, email.trim() || undefined);
+    await api.createPerson(name.trim(), color, email.trim() || undefined, role.trim() || undefined);
     setName("");
+    setRole("");
     setEmail("");
     setColor(PALETTE[(people.length + 1) % PALETTE.length]);
     reload();
@@ -40,6 +42,7 @@ export default function PeoplePage() {
         <div className="toolbar">
           <input type="color" value={color} onChange={(e) => setColor(e.target.value)} style={{ width: 40, padding: 2 }} />
           <input placeholder="Nome" value={name} onChange={(e) => setName(e.target.value)} />
+          <input placeholder="Cargo (ex: Analista)" value={role} onChange={(e) => setRole(e.target.value)} />
           <input placeholder="E-mail (opcional)" value={email} onChange={(e) => setEmail(e.target.value)} />
           <button onClick={create}>+ Adicionar</button>
         </div>
@@ -53,6 +56,7 @@ export default function PeoplePage() {
               <Avatar name={p.name} color={p.color} />
               <div>
                 <div style={{ fontWeight: 600 }}>{p.name}</div>
+                {p.role && <div className="muted">{p.role}</div>}
                 {p.email && <div className="muted">{p.email}</div>}
               </div>
             </div>

@@ -12,6 +12,7 @@ peopleRouter.get("/", async (_req, res) => {
 peopleRouter.post("/", async (req, res) => {
   const schema = z.object({
     name: z.string().min(1),
+    role: z.string().optional(),
     color: z.string().optional(),
     email: z.string().email().optional().or(z.literal("")),
   });
@@ -21,6 +22,7 @@ peopleRouter.post("/", async (req, res) => {
   const person = await prisma.person.create({
     data: {
       name: parsed.data.name,
+      role: parsed.data.role || undefined,
       color: parsed.data.color ?? "#579bfc",
       email: parsed.data.email || undefined,
     },

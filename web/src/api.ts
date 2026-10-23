@@ -103,7 +103,14 @@ export type AutomationRecipe = {
 
 export type AutomationRun = { id: string; recipeId: string; itemId: string; summary: string; createdAt: string };
 
-export type Person = { id: string; name: string; color: string; email?: string | null; createdAt: string };
+export type Person = {
+  id: string;
+  name: string;
+  role?: string | null;
+  color: string;
+  email?: string | null;
+  createdAt: string;
+};
 
 export type WorkloadEntry = {
   person: Person;
@@ -194,8 +201,8 @@ export const api = {
   deleteWidget: (id: string) => request<void>(`/dashboards/${id}`, { method: "DELETE" }),
 
   listPeople: () => request<Person[]>("/people"),
-  createPerson: (name: string, color: string, email?: string) =>
-    request<Person>("/people", { method: "POST", body: JSON.stringify({ name, color, email }) }),
+  createPerson: (name: string, color: string, email?: string, role?: string) =>
+    request<Person>("/people", { method: "POST", body: JSON.stringify({ name, color, email, role }) }),
   deletePerson: (id: string) => request<void>(`/people/${id}`, { method: "DELETE" }),
 
   getWorkload: () => request<WorkloadEntry[]>("/workload"),

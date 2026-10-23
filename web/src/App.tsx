@@ -1,8 +1,12 @@
+import { lazy, Suspense } from "react";
 import { Route, Routes, NavLink } from "react-router-dom";
 import BoardsListPage from "./pages/BoardsListPage.js";
 import BoardPage from "./pages/BoardPage.js";
 import PeoplePage from "./pages/PeoplePage.js";
 import WorkloadPage from "./pages/WorkloadPage.js";
+
+// three.js is heavy and only needed here, so keep it out of the main bundle.
+const OfficePage = lazy(() => import("./pages/OfficePage.js"));
 
 function navClass({ isActive }: { isActive: boolean }) {
   return isActive ? "active" : undefined;
@@ -22,6 +26,9 @@ export default function App() {
         <NavLink to="/workload" className={navClass}>
           Carga de trabalho
         </NavLink>
+        <NavLink to="/office" className={navClass}>
+          Escritório
+        </NavLink>
         <NavLink to="/people" className={navClass}>
           Pessoas
         </NavLink>
@@ -32,6 +39,14 @@ export default function App() {
           <Route path="/boards/:id" element={<BoardPage />} />
           <Route path="/people" element={<PeoplePage />} />
           <Route path="/workload" element={<WorkloadPage />} />
+          <Route
+            path="/office"
+            element={
+              <Suspense fallback={<p>Carregando escritório…</p>}>
+                <OfficePage />
+              </Suspense>
+            }
+          />
         </Routes>
       </main>
     </div>
