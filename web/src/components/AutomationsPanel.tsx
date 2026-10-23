@@ -83,6 +83,41 @@ export default function AutomationsPanel({ board }: { board: BoardDetail }) {
   const [actionGroupId, setActionGroupId] = useState("");
   const [actionValue, setActionValue] = useState("");
 
+  const firstStatusColumn = board.columns.find((c) => c.type === "STATUS");
+  const firstDateColumn = board.columns.find((c) => c.type === "DATE");
+  const firstColumn = board.columns[0];
+  const firstGroup = board.groups[0];
+
+  // Pre-fill the dropdowns with a real column/group as soon as a board is
+  // available, instead of leaving them on the "coluna…" placeholder — the
+  // user can still change the pick, but it should never start empty.
+  useEffect(() => {
+    if ((trigger === "STATUS_CHANGES_TO" || trigger === "ANY_COLUMN_CHANGES") && !triggerColumnId) {
+      const fallback = trigger === "STATUS_CHANGES_TO" ? firstStatusColumn : firstColumn;
+      if (fallback) setTriggerColumnId(fallback.id);
+    }
+    if (trigger === "ITEM_MOVED_TO_GROUP" && !triggerGroupId && firstGroup) {
+      setTriggerGroupId(firstGroup.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trigger, board.id]);
+
+  useEffect(() => {
+    if ((action === "CHANGE_COLUMN" || action === "SET_DATE" || action === "PUSH_DATE") && !actionColumnId) {
+      const fallback = action === "CHANGE_COLUMN" ? firstColumn : firstDateColumn;
+      if (fallback) setActionColumnId(fallback.id);
+    }
+    if (action === "MOVE_ITEM_TO_GROUP" && !actionGroupId && firstGroup) {
+      setActionGroupId(firstGroup.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [action, board.id]);
+
+  useEffect(() => {
+    if (useCondition && !conditionColumnId && firstColumn) setConditionColumnId(firstColumn.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useCondition]);
+
   async function reload() {
     setRecipes(await api.listRecipes(board.id));
   }

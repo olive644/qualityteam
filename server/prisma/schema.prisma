@@ -52,16 +52,23 @@ model Column {
 }
 
 model Item {
-  id         String   @id @default(cuid())
-  boardId    String
-  board      Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  groupId    String
-  group      Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  name       String
-  archived   Boolean  @default(false)
-  position   Int      @default(0)
-  createdAt  DateTime @default(now())
+  id           String   @id @default(cuid())
+  boardId      String
+  board        Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  groupId      String
+  group        Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name         String
+  archived     Boolean  @default(false)
+  position     Int      @default(0)
+  createdAt    DateTime @default(now())
   columnValues ColumnValue[]
+
+  // Simple subitems: a subitem is just an Item with a parent, shown nested
+  // under it with only a name and a done checkbox (no columns of its own).
+  parentItemId String?
+  parent       Item?    @relation("Subitems", fields: [parentItemId], references: [id], onDelete: Cascade)
+  subitems     Item[]   @relation("Subitems")
+  done         Boolean  @default(false)
 }
 
 model ColumnValue {

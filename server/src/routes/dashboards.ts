@@ -47,7 +47,7 @@ dashboardsRouter.get("/board/:boardId", async (req, res) => {
   });
 
   const items = await prisma.item.findMany({
-    where: { boardId: req.params.boardId, archived: false },
+    where: { boardId: req.params.boardId, archived: false, parentItemId: null },
     include: { columnValues: true },
   });
 

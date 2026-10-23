@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api, type BoardDetail, type Person } from "../api.js";
 import { labelsForColumn } from "./ColumnCell.js";
 import { Avatar } from "../avatar.js";
+import ColumnLabelsEditor from "./ColumnLabelsEditor.js";
 
 function parseValue(raw: string | undefined): any {
   if (!raw) return null;
@@ -24,6 +25,7 @@ export default function KanbanView({
   const peopleColumn = board.columns.find((c) => c.type === "PEOPLE");
   const statusColumns = board.columns.filter((c) => c.type === "STATUS");
   const [selectedId, setSelectedId] = useState<string>("");
+  const [editingLabels, setEditingLabels] = useState(false);
   const statusColumn = statusColumns.find((c) => c.id === selectedId) ?? statusColumns[0];
 
   if (!statusColumn) {
@@ -37,7 +39,7 @@ export default function KanbanView({
   }
 
   const LANES = [...labelsForColumn(statusColumn), { label: "Vazio", color: "#c4c4c4" }];
-  const items = board.items;
+  const items = board.items.filter((i) => !i.parentItemId);
   const columnId = statusColumn.id;
 
   function laneOf(item: BoardDetail["items"][number]) {
@@ -53,18 +55,34 @@ export default function KanbanView({
 
   return (
     <div>
-      {statusColumns.length > 1 && (
-        <div className="toolbar">
-          <span className="muted">Agrupar por</span>
-          <select value={statusColumn.id} onChange={(e) => setSelectedId(e.target.value)}>
-            {statusColumns.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="toolbar">
+        {statusColumns.length > 1 && (
+          <>
+            <span className="muted">Agrupar por</span>
+            <select value={statusColumn.id} onChange={(e) => setSelectedId(e.target.value)}>
+              {statusColumns.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+        <button className="secondary" onClick={() => setEditingLabels(true)}>
+          ⚙ Editar etiquetas de "{statusColumn.title}"
+        </button>
+      </div>
+
+      {editingLabels && (
+        <ColumnLabelsEditor
+          column={statusColumn}
+          onClose={() => setEditingLabels(false)}
+          onSaved={onChange}
+        />
       )}
+      <p className="muted" style={{ marginTop: -4 }}>
+        As colunas abaixo são as etiquetas reais da coluna "{statusColumn.title}" — mude-as no botão acima.
+      </p>
       <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 8 }}>
         {LANES.map((lane) => {
         const laneItems = items.filter((i) => laneOf(i) === lane.label);

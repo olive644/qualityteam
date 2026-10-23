@@ -24,11 +24,35 @@ itemsRouter.post("/", async (req, res) => {
   res.status(201).json(item);
 });
 
+// Subitems are plain Items with a parent, scoped to the same board/group —
+// kept intentionally simple (no columns of their own, no automations).
+itemsRouter.post("/:parentId/subitems", async (req, res) => {
+  const schema = z.object({ name: z.string().min(1) });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json(parsed.error.flatten());
+
+  const parent = await prisma.item.findUnique({ where: { id: req.params.parentId } });
+  if (!parent) return res.status(404).json({ error: "item pai não encontrado" });
+
+  const count = await prisma.item.count({ where: { parentItemId: parent.id } });
+  const subitem = await prisma.item.create({
+    data: {
+      boardId: parent.boardId,
+      groupId: parent.groupId,
+      parentItemId: parent.id,
+      name: parsed.data.name,
+      position: count,
+    },
+  });
+  res.status(201).json(subitem);
+});
+
 itemsRouter.patch("/:id", async (req, res) => {
   const schema = z.object({
     name: z.string().min(1).optional(),
     archived: z.boolean().optional(),
     groupId: z.string().optional(),
+    done: z.boolean().optional(),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json(parsed.error.flatten());

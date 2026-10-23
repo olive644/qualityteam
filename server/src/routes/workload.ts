@@ -28,7 +28,7 @@ workloadRouter.get("/", async (_req, res) => {
       include: {
         columns: true,
         items: {
-          where: { archived: false },
+          where: { archived: false, parentItemId: null },
           include: { columnValues: true },
         },
       },

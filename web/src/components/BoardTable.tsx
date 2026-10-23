@@ -30,6 +30,7 @@ export default function BoardTable({
   const [newColType, setNewColType] = useState<ColumnType>("STATUS");
   const [newGroupName, setNewGroupName] = useState("");
   const [newItemByGroup, setNewItemByGroup] = useState<Record<string, string>>({});
+  const [newSubitemByItem, setNewSubitemByItem] = useState<Record<string, string>>({});
   const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
 
   async function addColumn() {
@@ -51,6 +52,14 @@ export default function BoardTable({
     if (!name) return;
     await api.createItem(board.id, groupId, name);
     setNewItemByGroup((s) => ({ ...s, [groupId]: "" }));
+    onChange();
+  }
+
+  async function addSubitem(parentId: string) {
+    const name = newSubitemByItem[parentId]?.trim();
+    if (!name) return;
+    await api.createSubitem(parentId, name);
+    setNewSubitemByItem((s) => ({ ...s, [parentId]: "" }));
     onChange();
   }
 
@@ -102,32 +111,77 @@ export default function BoardTable({
         </thead>
         <tbody>
           {board.groups.map((group) => {
-            const items = board.items.filter((i) => i.groupId === group.id);
+            const items = board.items.filter((i) => i.groupId === group.id && !i.parentItemId);
             return (
               <Fragment key={group.id}>
                 <tr className="group-row">
                   <td colSpan={board.columns.length + 1}>{group.name}</td>
                 </tr>
-                {items.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      {item.name}{" "}
-                      <button
-                        className="secondary"
-                        style={{ padding: "2px 6px", fontSize: 11 }}
-                        onClick={async () => {
-                          await api.deleteItem(item.id);
-                          onChange();
-                        }}
-                      >
-                        ×
-                      </button>
-                    </td>
-                    {board.columns.map((col) => (
-                      <ColumnCell key={col.id} item={item} column={col} people={people} onChange={onChange} />
-                    ))}
-                  </tr>
-                ))}
+                {items.map((item) => {
+                  const subitems = board.items.filter((i) => i.parentItemId === item.id);
+                  return (
+                    <Fragment key={item.id}>
+                      <tr>
+                        <td>
+                          {item.name}{" "}
+                          <button
+                            className="secondary"
+                            style={{ padding: "2px 6px", fontSize: 11 }}
+                            onClick={async () => {
+                              await api.deleteItem(item.id);
+                              onChange();
+                            }}
+                          >
+                            ×
+                          </button>
+                        </td>
+                        {board.columns.map((col) => (
+                          <ColumnCell key={col.id} item={item} column={col} people={people} onChange={onChange} />
+                        ))}
+                      </tr>
+                      {subitems.map((sub) => (
+                        <tr key={sub.id}>
+                          <td colSpan={board.columns.length + 1} style={{ paddingLeft: 32, background: "#fafbfd" }}>
+                            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                              <input
+                                type="checkbox"
+                                checked={sub.done}
+                                onChange={async (e) => {
+                                  await api.setItemDone(sub.id, e.target.checked);
+                                  onChange();
+                                }}
+                              />
+                              <span style={{ textDecoration: sub.done ? "line-through" : "none", color: sub.done ? "var(--muted)" : undefined }}>
+                                {sub.name}
+                              </span>
+                              <button
+                                className="secondary"
+                                style={{ padding: "1px 6px", fontSize: 11, marginLeft: "auto" }}
+                                onClick={async () => {
+                                  await api.deleteItem(sub.id);
+                                  onChange();
+                                }}
+                              >
+                                ×
+                              </button>
+                            </label>
+                          </td>
+                        </tr>
+                      ))}
+                      <tr>
+                        <td colSpan={board.columns.length + 1} style={{ paddingLeft: 32 }}>
+                          <input
+                            placeholder="+ Subitem"
+                            value={newSubitemByItem[item.id] ?? ""}
+                            onChange={(e) => setNewSubitemByItem((s) => ({ ...s, [item.id]: e.target.value }))}
+                            onKeyDown={(e) => e.key === "Enter" && addSubitem(item.id)}
+                            style={{ width: "100%", border: "none", fontSize: 12, background: "transparent" }}
+                          />
+                        </td>
+                      </tr>
+                    </Fragment>
+                  );
+                })}
                 <tr>
                   <td colSpan={board.columns.length + 1}>
                     <input

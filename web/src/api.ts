@@ -65,6 +65,8 @@ export type Item = {
   name: string;
   archived: boolean;
   position: number;
+  parentItemId?: string | null;
+  done: boolean;
   columnValues: ColumnValue[];
 };
 
@@ -148,11 +150,17 @@ export const api = {
   createItem: (boardId: string, groupId: string, name: string) =>
     request<Item>("/items", { method: "POST", body: JSON.stringify({ boardId, groupId, name }) }),
 
+  createSubitem: (parentId: string, name: string) =>
+    request<Item>(`/items/${parentId}/subitems`, { method: "POST", body: JSON.stringify({ name }) }),
+
   setColumnValue: (itemId: string, columnId: string, value: unknown) =>
     request<void>(`/items/${itemId}/columns/${columnId}`, { method: "PUT", body: JSON.stringify({ value }) }),
 
   moveItemToGroup: (itemId: string, groupId: string) =>
     request<Item>(`/items/${itemId}`, { method: "PATCH", body: JSON.stringify({ groupId }) }),
+
+  setItemDone: (itemId: string, done: boolean) =>
+    request<Item>(`/items/${itemId}`, { method: "PATCH", body: JSON.stringify({ done }) }),
 
   deleteItem: (id: string) => request<void>(`/items/${id}`, { method: "DELETE" }),
 

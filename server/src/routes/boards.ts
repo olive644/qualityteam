@@ -8,7 +8,7 @@ export const boardsRouter = Router();
 boardsRouter.get("/", async (_req, res) => {
   const boards = await prisma.board.findMany({
     orderBy: { createdAt: "asc" },
-    include: { _count: { select: { items: { where: { archived: false } } } } },
+    include: { _count: { select: { items: { where: { archived: false, parentItemId: null } } } } },
   });
   res.json(boards.map((b) => ({ ...b, itemCount: b._count.items, _count: undefined })));
 });
