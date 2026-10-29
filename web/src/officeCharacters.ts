@@ -2,6 +2,8 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import type { Person } from "./api.js";
 
+export const CHARACTER_SCALE = .78;
+
 type Outfit = "coat" | "shirt" | "polo" | "uniform" | "default";
 export function outfitFor(name: string): Outfit {
   const tokens = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/[^a-z]+/);
@@ -15,6 +17,7 @@ export function outfitFor(name: string): Outfit {
 /** Stylized figures with the hairstyles and clothing supplied by the team. */
 export function makeCharacter(person: Person): THREE.Group {
   const root = new THREE.Group();
+  root.scale.setScalar(CHARACTER_SCALE);
   const outfit = outfitFor(person.name);
   const name = person.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/[^a-z]+/);
   const wyliane = name.includes("wyliane"), ana = name.includes("ana");
@@ -27,7 +30,6 @@ export function makeCharacter(person: Person): THREE.Group {
   const pants = new THREE.MeshStandardMaterial({ color: "#364451", roughness: .96 });
   const shoe = new THREE.MeshStandardMaterial({ color: "#273033", roughness: .7 });
   const hair = new THREE.MeshStandardMaterial({ color: wyliane || edivania ? "#d4af65" : "#403b36", roughness: .87 });
-  const eye = new THREE.MeshStandardMaterial({ color: "#253039", roughness: .65 });
   function mesh(geometry: THREE.BufferGeometry, material: THREE.Material, x: number, y: number, z: number, parent: THREE.Object3D = root) {
     const m = new THREE.Mesh(geometry, material); m.position.set(x,y,z); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m;
   }
@@ -62,18 +64,18 @@ export function makeCharacter(person: Person): THREE.Group {
   // Head pivot lets gaze and hair follow the body's motion without moving labels.
   const headRig = new THREE.Group(); headRig.name = "headRig"; headRig.position.y = 1.28; root.add(headRig);
   const head = sphere(.185,skin,0,.21,0,headRig); head.scale.set(.94,1.10,.94);
-  for (const side of [-1,1]) {
-    sphere(.038,skin,side*.17,.20,0,headRig);
-    const eyeRig=new THREE.Group();eyeRig.position.set(side*.064,.233,.159);eyeRig.name=side<0?"eyeLeft":"eyeRight";headRig.add(eyeRig);
-    const sclera=new THREE.MeshStandardMaterial({color:"#f4eee7",roughness:.7});
-    sphere(.021,sclera,0,0,0,eyeRig).scale.set(1,.68,.26);
-    sphere(.010,eye,-side*.002,0,.005,eyeRig).scale.set(.85,1,.38);
-    sphere(.003,sclera,-.003,.004,.010,eyeRig);
-    const brow=box(.052,.012,.012,hair,side*.066,.275,.145,headRig);brow.rotation.z=-side*.08;
+  // Faceless icon style from the reference: no eyes, brows, nose or mouth.
+  for (const side of [-1,1]) sphere(.032,skin,side*.17,.20,0,headRig);
+  if (ana || inaly || edivania || oliver) {
+    const glasses=new THREE.Group();glasses.name="glasses";headRig.add(glasses);
+    const frame=new THREE.MeshStandardMaterial({color:"#293137",roughness:.5});
+    for(const side of [-1,1]) {
+      const rim=mesh(new THREE.TorusGeometry(.047,.0055,8,40),frame,side*.061,.23,.171,glasses);rim.scale.y=.73;
+      const temple=new THREE.CatmullRomCurve3([new THREE.Vector3(side*.108,.23,.17),new THREE.Vector3(side*.16,.23,.12),new THREE.Vector3(side*.175,.22,.025)]);
+      mesh(new THREE.TubeGeometry(temple,12,.0045,6,false),frame,0,0,0,glasses);
+    }
+    box(.034,.007,.009,frame,0,.236,.174,glasses);
   }
-  const nose=sphere(.027,skin,0,.194,.17,headRig);nose.scale.set(.65,1.1,.65);
-  const lip = new THREE.MeshStandardMaterial({color:"#a37869",roughness:.95});
-  const smile = mesh(new THREE.TorusGeometry(.030,.0027,6,20,Math.PI*.68),lip,0,.145,.151,headRig);smile.rotation.z=Math.PI*1.16;
   if(!edivania){
     // Hairline follows the forehead, temples and nape; it never cuts across the eyes.
     const positions:number[]=[], indices:number[]=[];
@@ -226,9 +228,6 @@ export function poseCharacter(root: THREE.Group, time: number, moving: boolean, 
   const hair=root.getObjectByName("hairMotion")!;
   smooth(hair,"x",moving?Math.cos(cycle)*.11:Math.sin(t)*.015);
   smooth(hair,"z",moving?stride*.10:Math.sin(t*.8)*.018);
-  // Brief asynchronous blinks, so the team does not move in unison.
-  const blink=t%4.7;const open=blink<.12?Math.max(.08,Math.abs(blink-.06)/.06):1;
-  root.getObjectByName("eyeLeft")!.scale.y=open;root.getObjectByName("eyeRight")!.scale.y=open;
-  const y=seated?-.22:moving?Math.abs(Math.sin(cycle))*.022:Math.sin(t*1.8)*.005;
+  const y=seated?.54-.76*CHARACTER_SCALE:moving?Math.abs(Math.sin(cycle))*.022:Math.sin(t*1.8)*.005;
   root.position.y=THREE.MathUtils.lerp(root.position.y,y,blend);
 }

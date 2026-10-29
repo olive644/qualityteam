@@ -32,8 +32,8 @@ function makeNameSprite(name: string, role: string | null | undefined, color: st
   const texture = new THREE.CanvasTexture(canvas);
   const material = new THREE.SpriteMaterial({ map: texture, depthTest: false });
   const sprite = new THREE.Sprite(material);
-  sprite.scale.set(1.45, 0.54, 1);
-  sprite.position.y = 2.08;
+  sprite.scale.set(1.2, 0.44, 1);
+  sprite.position.y = 1.97;
   return sprite;
 }
 
@@ -154,7 +154,7 @@ export default function OfficePage() {
       const character = charactersRef.current.get(id);
       if (!character) return;
       followedPersonRef.current = id;
-      const at = character.group.position.clone(); at.y += 1.02;
+      const at = character.group.position.clone(); at.y += .82;
       const offset = new THREE.Vector3(.75, .65, 2.8).applyAxisAngle(new THREE.Vector3(0,1,0), character.group.rotation.y);
       camera.position.copy(at).add(offset); controls.target.copy(at); controls.update();
     };
@@ -217,7 +217,7 @@ export default function OfficePage() {
 
       const followed = followedPersonRef.current ? charactersRef.current.get(followedPersonRef.current) : undefined;
       if (followed) {
-        const at = followed.group.position.clone(); at.y += 1.02;
+        const at = followed.group.position.clone(); at.y += .82;
         const delta = at.clone().sub(controls.target);
         camera.position.add(delta); controls.target.copy(at);
       }
