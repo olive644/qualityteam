@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { buildLaboratory, disposeObject, STATIONS } from "../laboratory.js";
+import { makeCharacter, poseCharacter } from "../officeCharacters.js";
 import { api, type Person, type WorkloadEntry } from "../api.js";
 
 const DESK_POSITIONS = STATIONS;
-const WALK_BOUNDS = { minX: -2.8, maxX: 1, minZ: -2.3, maxZ: -.35 };
+const WALK_BOUNDS = { minX: -2.8, maxX: 1.2, minZ: -2.75, maxZ: -.42 };
 
 function makeNameSprite(name: string, role: string | null | undefined, color: string): THREE.Sprite {
   const canvas = document.createElement("canvas");
@@ -21,17 +22,17 @@ function makeNameSprite(name: string, role: string | null | undefined, color: st
   ctx.fill();
   ctx.fillStyle = "white";
   ctx.font = "bold 22px sans-serif";
-  ctx.fillText(name, 54, 42);
+  ctx.fillText(name, 54, 42, 185);
   if (role) {
     ctx.font = "16px sans-serif";
     ctx.fillStyle = "#c6c9e0";
-    ctx.fillText(role, 54, 66);
+    ctx.fillText(role, 54, 66, 185);
   }
   const texture = new THREE.CanvasTexture(canvas);
   const material = new THREE.SpriteMaterial({ map: texture, depthTest: false });
   const sprite = new THREE.Sprite(material);
-  sprite.scale.set(2.3, 0.86, 1);
-  sprite.position.y = 2.15;
+  sprite.scale.set(1.45, 0.54, 1);
+  sprite.position.y = 2.08;
   return sprite;
 }
 
@@ -43,22 +44,6 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.arcTo(x, y + h, x, y, r);
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
-}
-
-function makeCharacter(color: string): THREE.Group {
-  const group = new THREE.Group();
-  const bodyMat = new THREE.MeshStandardMaterial({ color });
-  const skinMat = new THREE.MeshStandardMaterial({ color: "#f2c49b" });
-
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.6, 4, 8), bodyMat);
-  body.position.y = 0.6;
-  group.add(body);
-
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), skinMat);
-  head.position.y = 1.15;
-  group.add(head);
-
-  return group;
 }
 
 type Character = {
@@ -113,7 +98,7 @@ export default function OfficePage() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#e4ecec");
     const camera = new THREE.PerspectiveCamera(42, 1, .1, 100);
-    camera.position.set(10, 10.5, 13);
+    camera.position.set(11.5, 11.5, 14.5);
     let renderer: THREE.WebGLRenderer;
     try { renderer = new THREE.WebGLRenderer({ antialias: true }); }
     catch { setGraphicsError(true); return; }
@@ -126,12 +111,12 @@ export default function OfficePage() {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.set(0, .5, -.2);
     controls.enableDamping = true;
-    controls.minDistance = 5; controls.maxDistance = 24;
+    controls.minDistance = 3; controls.maxDistance = 28;
     controls.maxPolarAngle = Math.PI / 2.15;
     controls.enablePan = false;
     controls.update();
     viewRef.current = (top) => {
-      camera.position.set(top ? 0 : 10, top ? 17 : 10.5, top ? .01 : 13);
+      camera.position.set(top ? 0 : 11.5, top ? 20 : 11.5, top ? .01 : 14.5);
       controls.target.set(0, .5, -.2); controls.update();
     };
     buildLaboratory(scene);
@@ -179,9 +164,10 @@ export default function OfficePage() {
           group.rotation.y = angle;
         } else if (seated) {
           // subtle "at the computer" bob
-          group.position.y = -.1 + Math.sin(now / 500) * 0.005;
+
           group.rotation.y = Math.PI;
         }
+        poseCharacter(group, now, dist > .05, seated && dist <= .05);
       }
 
       controls.update();
@@ -220,7 +206,7 @@ export default function OfficePage() {
       const busy = isBusy(workloadById.get(person.id));
       let c = existing.get(person.id);
       if (!c) {
-        const group = makeCharacter(person.color);
+        const group = makeCharacter(person);
         const sprite = makeNameSprite(person.name, person.role, person.color);
         group.add(sprite);
         const deskIndex = i;

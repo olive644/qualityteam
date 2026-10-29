@@ -1,6 +1,8 @@
 import * as THREE from 'three';
-export const STATIONS=[new THREE.Vector3(-2.3,0,2.1),new THREE.Vector3(0,0,2.1),new THREE.Vector3(2.3,0,2.1),new THREE.Vector3(2.3,0,-.3)];
-export function buildLaboratory(scene:THREE.Scene){
+const RAW_STATIONS=[new THREE.Vector3(-2.3,0,2.1),new THREE.Vector3(0,0,2.1),new THREE.Vector3(2.3,0,2.1),new THREE.Vector3(2.3,0,-.3)];
+export const STATIONS = RAW_STATIONS.map(p => new THREE.Vector3(p.x * 1.2, p.y, p.z * 1.2));
+export function buildLaboratory(parent:THREE.Scene){
+ const scene = new THREE.Group(); scene.scale.set(1.2, 1, 1.2); parent.add(scene);
  const mats=new Map<string,THREE.MeshStandardMaterial>();
  function box(w:number,h:number,d:number,x:number,y:number,z:number,c:string,parent:THREE.Object3D=scene){if(!mats.has(c))mats.set(c,new THREE.MeshStandardMaterial({color:c,roughness:.65}));const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mats.get(c));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
  function cyl(r:number,h:number,x:number,y:number,z:number,c:string,parent:THREE.Object3D=scene){const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,24),new THREE.MeshStandardMaterial({color:c}));m.position.set(x,y,z);m.castShadow=true;parent.add(m);return m;}
@@ -25,7 +27,7 @@ export function buildLaboratory(scene:THREE.Scene){
  cyl(.20,.5,-3.34,1.28,-3.9,'#f3f5ed');for(let i=0;i<3;i++){cyl(.055,.2,-2.98+i*.16,1.13,-3.85,'#e8f0e9');cyl(.035,.045,-2.98+i*.16,1.25,-3.85,['#1c5ca6','#53a269','#d45648'][i]);}
  box(.45,.67,.44,-3.24,.34,-2.86,'#1763ac');box(.49,.09,.48,-3.24,.73,-2.86,'#2678bc');
  box(1,.85,.035,-3.5,2.25,-4.40,'#c79b62');for(let i=0;i<4;i++)box(.38,.30,.015,-3.73+(i%2)*.46,2.45-Math.floor(i/2)*.38,-4.37,i%2?'#bb6353':'#eee9d7');
- STATIONS.forEach((p,i)=>{const g=new THREE.Group();g.position.set(p.x,0,p.z-.75);scene.add(g);box(2.1,.08,1,0,.80,0,'#d7d8cf',g);for(const x of [-.9,.9])for(const z of [-.35,.35])box(.055,.76,.055,x,.39,z,'#a4ada9',g);box(2.1,.56,.045,0,1.08,-.48,'#b7bdb6',g);box(.045,.42,.98,1.02,1.04,0,'#b7bdb6',g);
+ RAW_STATIONS.forEach((p,i)=>{const g=new THREE.Group();g.position.set(p.x,0,p.z-.75);g.scale.set(1/1.2,1,1/1.2);scene.add(g);box(2.1,.08,1,0,.80,0,'#d7d8cf',g);for(const x of [-.9,.9])for(const z of [-.35,.35])box(.055,.76,.055,x,.39,z,'#a4ada9',g);box(2.1,.56,.045,0,1.08,-.48,'#b7bdb6',g);box(.045,.42,.98,1.02,1.04,0,'#b7bdb6',g);
  if(i<3){box(.88,.52,.055,0,1.28,-.20,'#20292c',g);box(.80,.44,.008,0,1.28,-.166,'#2c7793',g);box(.075,.18,.06,0,.96,-.20,'#353e40',g);box(.35,.028,.22,0,.86,-.16,'#424c4b',g);box(.64,.025,.21,-.05,.86,.20,'#333d3e',g);for(let r=0;r<4;r++)for(let c=0;c<12;c++)box(.038,.005,.028,-.33+c*.048,.875,.13+r*.045,'#727b78',g);box(.17,.48,.44,.77,.3,-.15,'#333e40',g);for(let j=0;j<3;j++)box(.61,.025,.009,-.04,1.37-j*.09,-.159,j===0?'#b6e4dc':'#71aabb',g);
  }else{box(.72,.035,.46,0,.86,.06,'#9da9ac',g);box(.72,.45,.025,0,1.08,-.15,'#313e43',g).rotation.x=-.2;box(.65,.37,.008,0,1.08,-.127,'#599eac',g).rotation.x=-.2;box(.22,.005,.12,0,.881,.18,'#7a8c92',g);}
  const z=.83;box(.59,.09,.58,0,.48,z,'#293334',g);box(.56,.6,.09,0,.84,z+.24,'#30393a',g);cyl(.045,.33,0,.27,z,'#919c9b',g);for(const x of [-.34,.34]){box(.045,.23,.045,x,.58,z,'#414a48',g);box(.065,.045,.36,x,.7,z,'#323b3b',g);}for(let j=0;j<5;j++){const a=j*Math.PI*2/5;box(.05,.045,.43,Math.sin(a)*.18,.1,z+Math.cos(a)*.18,'#495453',g).rotation.y=a;cyl(.055,.07,Math.sin(a)*.37,.055,z+Math.cos(a)*.37,'#293332',g);}box(.3,.012,.22,-.69,.855,.12,'#faf9ef',g);
