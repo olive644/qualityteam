@@ -161,13 +161,13 @@ export default function OfficePage() {
           dir.normalize();
           group.position.addScaledVector(dir, Math.min(dist, speed * dt));
           const angle = Math.atan2(dir.x, dir.z);
-          group.rotation.y = angle;
+          group.rotation.y += Math.atan2(Math.sin(angle-group.rotation.y), Math.cos(angle-group.rotation.y)) * (1-Math.exp(-dt*9));
         } else if (seated) {
           // subtle "at the computer" bob
 
-          group.rotation.y = Math.PI;
+          group.rotation.y += Math.atan2(Math.sin(Math.PI-group.rotation.y), Math.cos(Math.PI-group.rotation.y)) * (1-Math.exp(-dt*9));
         }
-        poseCharacter(group, now, dist > .05, seated && dist <= .05);
+        poseCharacter(group, now, dist > .05, seated && dist <= .05, dt);
       }
 
       controls.update();
