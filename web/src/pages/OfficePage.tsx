@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { buildLaboratory, disposeObject, STATIONS } from "../laboratory.js";
 import { makeCharacter, poseCharacter } from "../officeCharacters.js";
+import { assignStations } from "../officeStations.js";
 import { api, type Person, type WorkloadEntry } from "../api.js";
 
 const DESK_POSITIONS = STATIONS;
@@ -185,7 +186,7 @@ export default function OfficePage() {
         const { group, target, busy } = c;
         group.visible = showTeamRef.current;
         if (pausedRef.current) continue;
-        const seated = busy && c.deskIndex < DESK_POSITIONS.length;
+        const seated = busy && c.deskIndex >= 0 && c.deskIndex < DESK_POSITIONS.length;
         const desired = seated ? DESK_POSITIONS[c.deskIndex] : target;
 
         if (!seated && now > c.nextWanderAt) {
@@ -251,7 +252,9 @@ export default function OfficePage() {
     const existing = charactersRef.current;
     const seen = new Set<string>();
 
+    const assignments = assignStations(people);
     people.forEach((person, i) => {
+      const deskIndex = assignments.get(person.id) ?? -1;
       seen.add(person.id);
       const busy = isBusy(workloadById.get(person.id));
       let c = existing.get(person.id);
@@ -259,8 +262,7 @@ export default function OfficePage() {
         const group = makeCharacter(person);
         const sprite = makeNameSprite(person.name, person.role, person.color);
         group.add(sprite);
-        const deskIndex = i;
-        const startPos = i < DESK_POSITIONS.length ? DESK_POSITIONS[i].clone() : new THREE.Vector3(-2 + (i % 4) * .7, 0, -1.8);
+        const startPos = deskIndex >= 0 ? DESK_POSITIONS[deskIndex].clone() : new THREE.Vector3(-2 + (i % 4) * .7, 0, -1.8);
         group.position.copy(startPos);
         scene.add(group);
         c = {
@@ -274,6 +276,7 @@ export default function OfficePage() {
         };
         existing.set(person.id, c);
       } else {
+        c.deskIndex = deskIndex;
         c.busy = busy;
         c.person = person;
       }
@@ -321,7 +324,7 @@ export default function OfficePage() {
       {fullscreenError && <p role="status" className="muted">{fullscreenError}</p>}
       {error && <p role="status" className="muted">{error}</p>}
       {loaded && people.length === 0 && <p className="muted">Cadastre a equipe em Pessoas para vê-la no laboratório.</p>}
-      {people.length > 4 && <p className="muted">As quatro primeiras pessoas usam as estações; os demais integrantes permanecem na área de circulação.</p>}
+      {people.length > 4 && <p className="muted">O notebook é exclusivo do Oliver. As demais pessoas usam os três computadores ou permanecem na área de circulação.</p>}
     </div>
   );
 }
