@@ -62,6 +62,10 @@ function isBusy(entry: WorkloadEntry | undefined): boolean {
 }
 
 export default function OfficePage() {
+  const pageRef = useRef<HTMLDivElement | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [fullscreenError, setFullscreenError] = useState("");
+  const [expanded, setExpanded] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -72,9 +76,39 @@ export default function OfficePage() {
   const [error, setError] = useState("");
   const [graphicsError, setGraphicsError] = useState(false);
   const viewRef = useRef<(top: boolean) => void>(() => {});
+  const focusRef = useRef<(id: string) => void>(() => {});
+  const followedPersonRef = useRef<string | null>(null);
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  pausedRef.current = paused;
   const [showTeam, setShowTeam] = useState(true);
   const showTeamRef = useRef(true);
   showTeamRef.current = showTeam;
+
+  useEffect(() => {
+    const sync = () => setFullscreen(document.fullscreenElement === pageRef.current);
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") { setExpanded(false); setFullscreenError(""); } };
+    document.addEventListener("fullscreenchange", sync);
+    document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("fullscreenchange", sync); document.removeEventListener("keydown", escape); };
+  }, []);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, [expanded]);
+
+  async function toggleFullscreen() {
+    setFullscreenError("");
+    try {
+      if (document.fullscreenElement === pageRef.current) await document.exitFullscreen();
+      else if (expanded) setExpanded(false);
+      else if (document.fullscreenEnabled && pageRef.current?.requestFullscreen) await pageRef.current.requestFullscreen();
+      else setExpanded(true);
+    } catch { setExpanded(true); setFullscreenError("Exibição ampliada ativada. O navegador não permitiu tela cheia; use Esc para sair."); }
+  }
 
   async function reload() {
     try {
@@ -111,11 +145,20 @@ export default function OfficePage() {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.set(0, .5, -.2);
     controls.enableDamping = true;
-    controls.minDistance = 3; controls.maxDistance = 28;
+    controls.minDistance = 1.5; controls.maxDistance = 28;
     controls.maxPolarAngle = Math.PI / 2.15;
     controls.enablePan = false;
     controls.update();
+    focusRef.current = (id) => {
+      const character = charactersRef.current.get(id);
+      if (!character) return;
+      followedPersonRef.current = id;
+      const at = character.group.position.clone(); at.y += 1.02;
+      const offset = new THREE.Vector3(.75, .65, 2.8).applyAxisAngle(new THREE.Vector3(0,1,0), character.group.rotation.y);
+      camera.position.copy(at).add(offset); controls.target.copy(at); controls.update();
+    };
     viewRef.current = (top) => {
+      followedPersonRef.current = null;
       camera.position.set(top ? 0 : 11.5, top ? 20 : 11.5, top ? .01 : 14.5);
       controls.target.set(0, .5, -.2); controls.update();
     };
@@ -141,6 +184,7 @@ export default function OfficePage() {
       for (const c of charactersRef.current.values()) {
         const { group, target, busy } = c;
         group.visible = showTeamRef.current;
+        if (pausedRef.current) continue;
         const seated = busy && c.deskIndex < DESK_POSITIONS.length;
         const desired = seated ? DESK_POSITIONS[c.deskIndex] : target;
 
@@ -170,6 +214,12 @@ export default function OfficePage() {
         poseCharacter(group, now, dist > .05, seated && dist <= .05, dt);
       }
 
+      const followed = followedPersonRef.current ? charactersRef.current.get(followedPersonRef.current) : undefined;
+      if (followed) {
+        const at = followed.group.position.clone(); at.y += 1.02;
+        const delta = at.clone().sub(controls.target);
+        camera.position.add(delta); controls.target.copy(at);
+      }
       controls.update();
       renderer.render(scene, camera);
       raf = requestAnimationFrame(animate);
@@ -241,7 +291,7 @@ export default function OfficePage() {
   const busyCount = workload.filter(isBusy).length;
 
   return (
-    <div className="laboratory-page">
+    <div ref={pageRef} className={`laboratory-page${expanded ? " lab-expanded" : ""}`}>
       <div className="lab-heading">
         <div><span className="lab-eyebrow">QUALITYTEAM · AMBIENTE DA EQUIPE</span><h2>Escritório <span>/ Laboratório</span></h2>
         <p className="muted">Uma representação do nosso espaço de qualidade, baseada no vídeo do laboratório.</p></div>
@@ -251,6 +301,12 @@ export default function OfficePage() {
         <div className="lab-views" aria-label="Visualização do laboratório">
           <button className="secondary" onClick={() => viewRef.current(false)}>Vista geral</button>
           <button className="secondary" onClick={() => viewRef.current(true)}>Vista superior</button>
+          {people.length > 0 && <select aria-label="Aproximar personagem" defaultValue="" onChange={(event) => { focusRef.current(event.target.value); event.target.value = ""; }}>
+            <option value="" disabled>Ver personagem…</option>
+            {people.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}
+          </select>}
+          <button className="secondary" onClick={() => setPaused(!paused)} aria-pressed={paused}>{paused ? "Retomar animações" : "Pausar animações"}</button>
+          <button className="secondary lab-fullscreen-button" onClick={toggleFullscreen} aria-pressed={fullscreen || expanded}>{fullscreen || expanded ? "Sair da tela cheia" : "Tela cheia"}</button>
           <button className="secondary" aria-pressed={showTeam} onClick={() => setShowTeam(!showTeam)}>{showTeam ? "Ocultar equipe" : "Mostrar equipe"}</button>
         </div>
         <div className="lab-presence"><span className="lab-dot" />{busyCount} com tarefas ativas <span>· {Math.max(0, people.length - busyCount)} livres</span></div>
@@ -262,6 +318,7 @@ export default function OfficePage() {
         {graphicsError && <div className="lab-fallback">A visualização 3D precisa de WebGL habilitado no navegador.</div>}
       </div>
       <div className="lab-footer"><span>Bancadas de ensaio · Área de análises · Estações de trabalho</span><span>Equipe atualizada a cada 15 segundos</span></div>
+      {fullscreenError && <p role="status" className="muted">{fullscreenError}</p>}
       {error && <p role="status" className="muted">{error}</p>}
       {loaded && people.length === 0 && <p className="muted">Cadastre a equipe em Pessoas para vê-la no laboratório.</p>}
       {people.length > 4 && <p className="muted">As quatro primeiras pessoas usam as estações; os demais integrantes permanecem na área de circulação.</p>}

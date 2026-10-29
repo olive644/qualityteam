@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import type { Person } from "./api.js";
 
 type Outfit = "coat" | "shirt" | "polo" | "uniform" | "default";
@@ -34,9 +35,28 @@ export function makeCharacter(person: Person): THREE.Group {
     return mesh(new THREE.SphereGeometry(r, 20, 16), material, x,y,z,parent);
   }
   function box(w: number,h: number,d: number, material: THREE.Material,x: number,y: number,z: number,parent: THREE.Object3D = root) {
-    return mesh(new THREE.BoxGeometry(w,h,d), material,x,y,z,parent);
+    return mesh(new RoundedBoxGeometry(w,h,d,3,Math.min(w,h,d)*.23), material,x,y,z,parent);
   }
-  const torso = mesh(new THREE.CylinderGeometry(.205,.235,.49,24),fabric,0,.98,0); torso.scale.z=.67;
+  function lock(points: number[][], width: number, depth: number, material: THREE.Material, parent: THREE.Object3D) {
+    const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p as [number,number,number])));
+    const steps=24,rings=10,frames=curve.computeFrenetFrames(steps,false);
+    const positions:number[]=[],indices:number[]=[];
+    for(let i=0;i<=steps;i++){
+      const t=i/steps,center=curve.getPointAt(t);
+      const taper=.035+.965*Math.pow(1-t,.43);
+      for(let j=0;j<=rings;j++){
+        const angle=j/rings*Math.PI*2;
+        const v=center.clone().addScaledVector(frames.normals[i],Math.cos(angle)*width*taper).addScaledVector(frames.binormals[i],Math.sin(angle)*depth*taper);
+        positions.push(v.x,v.y,v.z);
+        if(i<steps&&j<rings){const a=i*(rings+1)+j,b=a+rings+1;indices.push(a,b,a+1,b,b+1,a+1);}
+      }
+    }
+    const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.Float32BufferAttribute(positions,3));geo.setIndex(indices);geo.computeVertexNormals();
+    return mesh(geo,material,0,0,0,parent);
+  }
+  const profile = [.205,.224,.222,.213,.225,.239,.217].map((radius,i)=>new THREE.Vector2(radius,i*.078));
+  const torso = mesh(new THREE.LatheGeometry(profile,32),fabric,0,.745,0); torso.scale.z=.67;
+  for(const side of [-1,1])sphere(.065,fabric,side*.205,1.16,0).scale.set(1,1,.9);
   mesh(new THREE.CylinderGeometry(.075,.085,.12,20),skin,0,1.275,0);
   // Head pivot lets gaze and hair follow the body's motion without moving labels.
   const headRig = new THREE.Group(); headRig.name = "headRig"; headRig.position.y = 1.28; root.add(headRig);
@@ -52,37 +72,36 @@ export function makeCharacter(person: Person): THREE.Group {
   mesh(new THREE.SphereGeometry(.191,24,16,0,Math.PI*2,0,Math.PI*.49),hair,0,.23,-.008,headRig).scale.set(.95,1.10,.92);
   const locks = new THREE.Group(); locks.name="hairMotion"; locks.position.set(0,.30,-.11);headRig.add(locks);
   if (wyliane) {
-    // High gathered ponytail, visible elastic and tapered curved locks.
+    // Gathered crown and a layered ponytail with tapered ends and restrained highlights.
     const tie=new THREE.MeshStandardMaterial({color:"#39444a",roughness:.8});
-    const elastic=mesh(new THREE.TorusGeometry(.056,.014,8,20),tie,0,.035,-.09,locks);elastic.rotation.x=.3;
-    const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(0,.07,-.09),new THREE.Vector3(0,.04,-.21),new THREE.Vector3(.015,-.12,-.27),new THREE.Vector3(.035,-.34,-.25),new THREE.Vector3(.055,-.46,-.20)]);
-    mesh(new THREE.TubeGeometry(curve,24,.062,12,false),hair,0,0,0,locks);
-    for(let i=0;i<5;i++){
-      const strand=mesh(new THREE.TubeGeometry(curve,24,.005,6,false),new THREE.MeshStandardMaterial({color:i%2?"#e6c985":"#b08b49",roughness:.9}),Math.sin(i*1.3)*.045,0,Math.cos(i*1.3)*.035,locks);
-      strand.name="ponytail-strand";
+    mesh(new THREE.TorusGeometry(.055,.012,8,24),tie,0,.025,-.09,locks).rotation.x=.3;
+    const highlight=new THREE.MeshStandardMaterial({color:"#dcc084",roughness:.78});
+    for(let i=0;i<7;i++){
+      const x=(i-3)*.017;
+      lock([[x,.07,-.08],[x,.025,-.19],[x+.015,-.15,-.25],[x+.035,-.34,-.24],[x+.055,-.52,-.17]],.032,.031,i%3===0?highlight:hair,locks);
     }
+    for(const side of [-1,1])lock([[side*.10,.37,.06],[side*.155,.30,.02],[side*.14,.25,-.12],[side*.055,.32,-.21]],.034,.025,hair,headRig);
   } else if (ana || inaly) {
-    // Long hair sits behind the shoulders; individual side locks frame the face.
-    const back=sphere(.185,hair,0,-.19,-.035,locks);back.scale.set(1.05,1.9,.46);
-    for(const side of [-1,1]){
-      const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(side*.15,.02,.08),new THREE.Vector3(side*.185,-.14,.08),new THREE.Vector3(side*.20,-.34,.04),new THREE.Vector3(side*.18,-.48,.015)]);
-      mesh(new THREE.TubeGeometry(curve,20,.043,10,false),hair,0,0,0,locks);
+    // Overlapping curved locks form one coherent long-hair silhouette behind the face.
+    const sheen=new THREE.MeshStandardMaterial({color:ana?"#51453c":"#514b43",roughness:.85});
+    for(let i=0;i<9;i++){
+      const x=(i-4)*.04;
+      lock([[x,.05,-.025],[x*1.11,-.10,-.055],[x*1.17,-.28,-.055],[x*1.08,-.46,-.02],[x*.95,-.59,.015]],.043,.042,i%4===0?sheen:hair,locks);
     }
+    for(const side of [-1,1])lock([[side*.15,.035,.075],[side*.18,-.12,.10],[side*.20,-.30,.06],[side*.19,-.49,.025]],.045,.035,hair,locks);
     if(ana){
-      // Short curved fringe above the brows, with a subtly separated edge.
       for(let i=0;i<9;i++){
-        const x=(i-4)*.033;
-        const fringe=sphere(.04,hair,x,.315+Math.abs(x)*.23,.13,headRig);
-        fringe.scale.set(.72,1.55,.75);fringe.rotation.z=-x*.8;
+        const x=(i-4)*.032;
+        lock([[x*.80,.399,.065],[x,.365,.131],[x,.325,.151],[x,.309+Math.abs(x)*.16,.152]],.023,.018,hair,headRig);
       }
     } else {
-      const sweep=sphere(.12,hair,-.08,.35,.075,headRig);sweep.scale.set(1,.48,.8);sweep.rotation.z=-.28;
+      for(let i=0;i<5;i++)lock([[-.04+i*.022,.398,.05],[-.12+i*.015,.36,.12],[-.155+i*.006,.27,.13],[-.17,.16,.09]],.025,.02,hair,headRig);
     }
   } else if (oliver) {
-    // Compact mullet: cropped sides, sculpted top, short nape at the back.
-    const nape=sphere(.14,hair,0,-.15,-.045,locks);nape.scale.set(.88,1.20,.48);
-    for(let i=0;i<5;i++){
-      const tuft=sphere(.057,hair,(i-2)*.048,.40,-.012,headRig);tuft.scale.set(.8,.65,1.4);tuft.rotation.x=-.25;
+    for(let i=0;i<7;i++){
+      const x=(i-3)*.035;
+      lock([[x,.35,-.06],[x,.23,-.16],[x,.06,-.18],[x*.93,-.045,-.14]],.029,.023,hair,headRig);
+      lock([[x,.35,.08],[x,.416,.02],[x,.39,-.08],[x,.32,-.15]],.032,.026,hair,headRig);
     }
   }
   if(edivania){
@@ -91,11 +110,11 @@ export function makeCharacter(person: Person): THREE.Group {
     const stitch=new THREE.MeshStandardMaterial({color:"#b6cac4",roughness:1});
     mesh(new THREE.SphereGeometry(.214,28,20,0,Math.PI*2,0,Math.PI*.60),cap,0,.25,-.015,headRig).scale.set(1,1,.94);
     const band=mesh(new THREE.TorusGeometry(.183,.018,8,32),stitch,0,.20,-.015,headRig);band.rotation.x=Math.PI/2;
-    for(let i=0;i<12;i++){
-      const angle=i*Math.PI*2/12;
-      const fold=sphere(.013,stitch,Math.cos(angle)*.19,.235,Math.sin(angle)*.17-.015,headRig);fold.scale.y=2.4;
+    for(let i=0;i<10;i++){
+      const a=i*Math.PI*2/10;
+      lock([[Math.cos(a)*.19,.23,Math.sin(a)*.17-.015],[Math.cos(a)*.16,.35,Math.sin(a)*.14-.015],[Math.cos(a)*.05,.45,Math.sin(a)*.05-.015]],.004,.004,stitch,headRig);
     }
-    for(let i=0;i<3;i++)sphere(.023,hair,-.11+i*.025,.235,.145,headRig).scale.y=1.3;
+    for(let i=0;i<3;i++)lock([[-.12+i*.03,.25,.115],[-.11+i*.03,.22,.148],[-.105+i*.03,.19,.14]],.018,.013,hair,headRig);
   }
   // Collar pieces fold outward; the coat has extended lapels and a split hem.
   for(const side of [-1,1]) {
@@ -140,7 +159,10 @@ export function makeCharacter(person: Person): THREE.Group {
     mesh(new THREE.CapsuleGeometry(.085,.22,6,16),pants,0,-.17,0,leg);
     const shin=new THREE.Group();shin.name=`shin${suffix}`;shin.position.y=-.36;leg.add(shin);
     mesh(new THREE.CapsuleGeometry(.071,.22,6,16),pants,0,-.16,0,shin);
-    const foot=box(.15,.09,.25,shoe,0,-.325,.055,shin);foot.geometry.computeVertexNormals();
+    box(.15,.09,.25,shoe,0,-.325,.055,shin);
+    const sole=new THREE.MeshStandardMaterial({color:"#4c575e",roughness:.9});
+    box(.152,.022,.25,sole,0,-.362,.055,shin);
+    for(let lace=0;lace<3;lace++)box(.084,.008,.009,seam,0,-.28,.04+lace*.027,shin);
   }
   return root;
 }
