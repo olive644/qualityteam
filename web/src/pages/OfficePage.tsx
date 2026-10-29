@@ -1,15 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { buildLaboratory, disposeObject, STATIONS } from "../laboratory.js";
 import { api, type Person, type WorkloadEntry } from "../api.js";
 
-const DESK_POSITIONS = [
-  new THREE.Vector3(-4.5, 0, -4),
-  new THREE.Vector3(-1.5, 0, -4),
-  new THREE.Vector3(1.5, 0, -4),
-  new THREE.Vector3(4.5, 0, -4),
-];
-
-const WALK_BOUNDS = { minX: -5.5, maxX: 5.5, minZ: -1, maxZ: 4.5 };
+const DESK_POSITIONS = STATIONS;
+const WALK_BOUNDS = { minX: -2.8, maxX: 1, minZ: -2.3, maxZ: -.35 };
 
 function makeNameSprite(name: string, role: string | null | undefined, color: string): THREE.Sprite {
   const canvas = document.createElement("canvas");
@@ -88,12 +84,19 @@ export default function OfficePage() {
   const [people, setPeople] = useState<Person[]>([]);
   const [workload, setWorkload] = useState<WorkloadEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState("");
+  const [graphicsError, setGraphicsError] = useState(false);
+  const viewRef = useRef<(top: boolean) => void>(() => {});
+  const [showTeam, setShowTeam] = useState(true);
+  const showTeamRef = useRef(true);
+  showTeamRef.current = showTeam;
 
   async function reload() {
-    const [p, w] = await Promise.all([api.listPeople(), api.getWorkload()]);
-    setPeople(p);
-    setWorkload(w);
-    setLoaded(true);
+    try {
+      const [p, w] = await Promise.all([api.listPeople(), api.getWorkload()]);
+      setPeople(p); setWorkload(w); setLoaded(true); setError("");
+    } catch { setError("Não foi possível atualizar a equipe. O laboratório continua disponível."); }
+
   }
 
   useEffect(() => {
@@ -108,67 +111,30 @@ export default function OfficePage() {
     if (!container) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#eef1f8");
-    scene.fog = new THREE.Fog("#eef1f8", 14, 26);
-
-    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
-    camera.position.set(0, 9, 10);
-    camera.lookAt(0, 0, -1);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    scene.background = new THREE.Color("#e4ecec");
+    const camera = new THREE.PerspectiveCamera(42, 1, .1, 100);
+    camera.position.set(10, 10.5, 13);
+    let renderer: THREE.WebGLRenderer;
+    try { renderer = new THREE.WebGLRenderer({ antialias: true }); }
+    catch { setGraphicsError(true); return; }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1;
     container.appendChild(renderer.domElement);
-
-    scene.add(new THREE.AmbientLight("#ffffff", 0.7));
-    const sun = new THREE.DirectionalLight("#ffffff", 0.8);
-    sun.position.set(5, 10, 6);
-    scene.add(sun);
-
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(16, 14),
-      new THREE.MeshStandardMaterial({ color: "#dfe3ee" })
-    );
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.z = 0.5;
-    scene.add(floor);
-
-    const wall = new THREE.Mesh(
-      new THREE.PlaneGeometry(16, 4),
-      new THREE.MeshStandardMaterial({ color: "#c7cbe0" })
-    );
-    wall.position.set(0, 2, -5.5);
-    scene.add(wall);
-
-    // Desks + monitors
-    DESK_POSITIONS.forEach((pos) => {
-      const desk = new THREE.Mesh(
-        new THREE.BoxGeometry(1.4, 0.08, 0.7),
-        new THREE.MeshStandardMaterial({ color: "#9c6b3e" })
-      );
-      desk.position.set(pos.x, 0.7, pos.z);
-      scene.add(desk);
-
-      const legMat = new THREE.MeshStandardMaterial({ color: "#5a5a5a" });
-      [-0.6, 0.6].forEach((dx) => {
-        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.7, 0.06), legMat);
-        leg.position.set(pos.x + dx, 0.35, pos.z + 0.25);
-        scene.add(leg);
-      });
-
-      const monitor = new THREE.Mesh(
-        new THREE.BoxGeometry(0.55, 0.38, 0.04),
-        new THREE.MeshStandardMaterial({ color: "#1f2246", emissive: "#2a5bd7", emissiveIntensity: 0.4 })
-      );
-      monitor.position.set(pos.x, 1.05, pos.z - 0.2);
-      scene.add(monitor);
-
-      const chair = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.22, 0.22, 0.08, 16),
-        new THREE.MeshStandardMaterial({ color: "#333" })
-      );
-      chair.position.set(pos.x, 0.42, pos.z + 0.75);
-      scene.add(chair);
-    });
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, .5, -.2);
+    controls.enableDamping = true;
+    controls.minDistance = 5; controls.maxDistance = 24;
+    controls.maxPolarAngle = Math.PI / 2.15;
+    controls.enablePan = false;
+    controls.update();
+    viewRef.current = (top) => {
+      camera.position.set(top ? 0 : 10, top ? 17 : 10.5, top ? .01 : 13);
+      controls.target.set(0, .5, -.2); controls.update();
+    };
+    buildLaboratory(scene);
 
     function handleResize() {
       if (!container) return;
@@ -178,7 +144,8 @@ export default function OfficePage() {
       renderer.setSize(clientWidth, clientHeight);
     }
     handleResize();
-    window.addEventListener("resize", handleResize);
+    const observer = new ResizeObserver(handleResize);
+    observer.observe(container);
 
     let raf = 0;
     let last = performance.now();
@@ -188,9 +155,11 @@ export default function OfficePage() {
 
       for (const c of charactersRef.current.values()) {
         const { group, target, busy } = c;
-        const desired = busy ? DESK_POSITIONS[c.deskIndex].clone().add(new THREE.Vector3(0, 0, 0.75)) : target;
+        group.visible = showTeamRef.current;
+        const seated = busy && c.deskIndex < DESK_POSITIONS.length;
+        const desired = seated ? DESK_POSITIONS[c.deskIndex] : target;
 
-        if (!busy && now > c.nextWanderAt) {
+        if (!seated && now > c.nextWanderAt) {
           target.set(
             WALK_BOUNDS.minX + Math.random() * (WALK_BOUNDS.maxX - WALK_BOUNDS.minX),
             0,
@@ -208,13 +177,14 @@ export default function OfficePage() {
           group.position.addScaledVector(dir, Math.min(dist, speed * dt));
           const angle = Math.atan2(dir.x, dir.z);
           group.rotation.y = angle;
-        } else if (busy) {
+        } else if (seated) {
           // subtle "at the computer" bob
-          group.position.y = Math.sin(now / 500) * 0.01;
-          group.rotation.y = 0;
+          group.position.y = -.1 + Math.sin(now / 500) * 0.005;
+          group.rotation.y = Math.PI;
         }
       }
 
+      controls.update();
       renderer.render(scene, camera);
       raf = requestAnimationFrame(animate);
     }
@@ -225,7 +195,11 @@ export default function OfficePage() {
 
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener("resize", handleResize);
+      observer.disconnect();
+      controls.dispose();
+      disposeObject(scene);
+      charactersRef.current.clear();
+      sceneRef.current = null;
       renderer.dispose();
       container.removeChild(renderer.domElement);
     };
@@ -249,8 +223,8 @@ export default function OfficePage() {
         const group = makeCharacter(person.color);
         const sprite = makeNameSprite(person.name, person.role, person.color);
         group.add(sprite);
-        const deskIndex = i % DESK_POSITIONS.length;
-        const startPos = DESK_POSITIONS[deskIndex].clone().add(new THREE.Vector3(0, 0, 0.75));
+        const deskIndex = i;
+        const startPos = i < DESK_POSITIONS.length ? DESK_POSITIONS[i].clone() : new THREE.Vector3(-2 + (i % 4) * .7, 0, -1.8);
         group.position.copy(startPos);
         scene.add(group);
         c = {
@@ -272,6 +246,7 @@ export default function OfficePage() {
     for (const [id, c] of existing) {
       if (!seen.has(id)) {
         scene.remove(c.group);
+        disposeObject(c.group);
         existing.delete(id);
       }
     }
@@ -280,36 +255,30 @@ export default function OfficePage() {
   const busyCount = workload.filter(isBusy).length;
 
   return (
-    <div>
-      <h2>Escritório</h2>
-      <p className="muted" style={{ marginTop: -10, marginBottom: 16 }}>
-        Visualização em tempo real da equipe: quem tem uma tarefa ativa atribuída fica sentado no computador; quem
-        está livre anda pela sala. Atualiza a cada 15s a partir da Carga de trabalho.
-      </p>
-      <div className="toolbar">
-        <span className="status-pill" style={{ background: "#00c875" }}>
-          {busyCount} ocupado{busyCount === 1 ? "" : "s"}
-        </span>
-        <span className="status-pill" style={{ background: "#9699a6" }}>
-          {Math.max(0, people.length - busyCount)} livre{people.length - busyCount === 1 ? "" : "s"}
-        </span>
+    <div className="laboratory-page">
+      <div className="lab-heading">
+        <div><span className="lab-eyebrow">QUALITYTEAM · AMBIENTE DA EQUIPE</span><h2>Escritório <span>/ Laboratório</span></h2>
+        <p className="muted">Uma representação do nosso espaço de qualidade, baseada no vídeo do laboratório.</p></div>
+        <div className="lab-capacity">3 computadores <span>+ 1 notebook</span></div>
       </div>
-      <div
-        ref={containerRef}
-        style={{
-          width: "100%",
-          height: "520px",
-          borderRadius: "var(--radius)",
-          overflow: "hidden",
-          boxShadow: "var(--shadow)",
-          background: "#eef1f8",
-        }}
-      />
-      {people.length === 0 && (
-        <p className="muted" style={{ marginTop: 12 }}>
-          Nenhuma pessoa cadastrada ainda — adicione sua equipe em "Pessoas" pra vê-la aqui.
-        </p>
-      )}
+      <div className="lab-tools">
+        <div className="lab-views" aria-label="Visualização do laboratório">
+          <button className="secondary" onClick={() => viewRef.current(false)}>Vista geral</button>
+          <button className="secondary" onClick={() => viewRef.current(true)}>Vista superior</button>
+          <button className="secondary" aria-pressed={showTeam} onClick={() => setShowTeam(!showTeam)}>{showTeam ? "Ocultar equipe" : "Mostrar equipe"}</button>
+        </div>
+        <div className="lab-presence"><span className="lab-dot" />{busyCount} com tarefas ativas <span>· {Math.max(0, people.length - busyCount)} livres</span></div>
+      </div>
+      <div className="lab-stage">
+        <div ref={containerRef} className="lab-canvas" role="img" aria-label="Laboratório 3D com bancadas de granito, equipamentos, três computadores e um notebook. Use os botões de vista ou arraste para girar." />
+        <div className="lab-stage-label"><strong>Laboratório de qualidade</strong><span>Reconstrução visual · proporções estimadas</span></div>
+        <div className="lab-gesture">Arraste para girar · Role para aproximar</div>
+        {graphicsError && <div className="lab-fallback">A visualização 3D precisa de WebGL habilitado no navegador.</div>}
+      </div>
+      <div className="lab-footer"><span>Bancadas de ensaio · Área de análises · Estações de trabalho</span><span>Equipe atualizada a cada 15 segundos</span></div>
+      {error && <p role="status" className="muted">{error}</p>}
+      {loaded && people.length === 0 && <p className="muted">Cadastre a equipe em Pessoas para vê-la no laboratório.</p>}
+      {people.length > 4 && <p className="muted">As quatro primeiras pessoas usam as estações; os demais integrantes permanecem na área de circulação.</p>}
     </div>
   );
 }
