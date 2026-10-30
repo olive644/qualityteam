@@ -8,6 +8,7 @@ import { automationsRouter } from "./routes/automations.js";
 import { dashboardsRouter } from "./routes/dashboards.js";
 import { peopleRouter } from "./routes/people.js";
 import { workloadRouter } from "./routes/workload.js";
+import { miiRouter } from "./routes/mii.js";
 
 export const app = express();
 app.use(cors());
@@ -21,5 +22,7 @@ app.use("/api/automations", automationsRouter);
 app.use("/api/dashboards", dashboardsRouter);
 app.use("/api/people", peopleRouter);
 app.use("/api/workload", workloadRouter);
+
+app.use("/api/mii", miiRouter);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));

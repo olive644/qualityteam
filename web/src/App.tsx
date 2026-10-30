@@ -4,6 +4,7 @@ import BoardsListPage from "./pages/BoardsListPage.js";
 import BoardPage from "./pages/BoardPage.js";
 import PeoplePage from "./pages/PeoplePage.js";
 import WorkloadPage from "./pages/WorkloadPage.js";
+import MiiPage from "./pages/MiiPage.js";
 
 // three.js is heavy and only needed here, so keep it out of the main bundle.
 const OfficePage = lazy(() => import("./pages/OfficePage.js"));
@@ -32,6 +33,9 @@ export default function App() {
         <NavLink to="/people" className={navClass}>
           Pessoas
         </NavLink>
+        <NavLink to="/mii" className={navClass}>
+          Consulta MII
+        </NavLink>
       </aside>
       <main className="main">
         <Routes>
@@ -39,6 +43,7 @@ export default function App() {
           <Route path="/boards/:id" element={<BoardPage />} />
           <Route path="/people" element={<PeoplePage />} />
           <Route path="/workload" element={<WorkloadPage />} />
+          <Route path="/mii" element={<MiiPage />} />
           <Route
             path="/office"
             element={

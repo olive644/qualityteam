@@ -305,3 +305,72 @@ table.board-table tbody tr:not(.group-row):hover {
 .lab-fullscreen-button{display:inline-flex;align-items:center;gap:8px}
 .lab-fullscreen-button::before{content:"";display:inline-block;width:13px;height:13px;border:1.5px solid currentColor;border-radius:2px}
 @media(max-width:700px){.laboratory-page:fullscreen,.laboratory-page.lab-expanded{padding:14px}.laboratory-page:fullscreen .lab-heading,.lab-expanded .lab-heading{gap:8px}.laboratory-page:fullscreen .lab-heading p,.lab-expanded .lab-heading p{display:none}}
+
+/* ─── MII Page ─────────────────────────────────────────────────────────────── */
+.btn-primary {
+  background: var(--blue);
+  color: white;
+  border: none;
+  padding: 9px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: background 0.12s;
+}
+.btn-primary:hover { background: var(--blue-dark); }
+.btn-primary:disabled { background: #c5c7d0; cursor: not-allowed; }
+
+.btn-outline {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: background 0.12s;
+}
+.btn-outline:hover { background: #f0f1f5; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.input {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface);
+  box-sizing: border-box;
+  transition: border-color 0.12s;
+}
+.input:focus { outline: none; border-color: var(--blue); }
+
+.field-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.field-label .input { margin-top: 4px; }
+
+.alert {
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+.alert-green { background: #e8faf2; color: #1a7a4e; border: 1px solid #b2e8cf; }
+.alert-red   { background: #fff0f2; color: #c0243a; border: 1px solid #f5c0c8; }
+.alert-blue  { background: #e8f0fe; color: #1a56b0; border: 1px solid #b3ccf5; }
+
+.main { padding: 0 !important; }

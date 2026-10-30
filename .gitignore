@@ -9,3 +9,6 @@ build/
 # SQLite dev database
 server/prisma/dev.db
 server/prisma/dev.db-journal
+
+# Credenciais MII (nunca commitar)
+mii-config.json
