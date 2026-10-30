@@ -43,8 +43,10 @@ type CampoKey = typeof CAMPOS[number]["key"];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+const MII_BASE = "http://localhost:4000";
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`/api/mii${path}`, {
+  const res = await fetch(`${MII_BASE}/api/mii${path}`, {
     headers: { "Content-Type": "application/json" },
     ...init,
   });
