@@ -41,6 +41,7 @@ const API_BASE = "http://localhost:3000";
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(300_000), // 5 minutos
     ...init,
   });
   const data = await res.json();
