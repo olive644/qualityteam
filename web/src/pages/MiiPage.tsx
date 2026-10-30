@@ -65,6 +65,7 @@ export default function MiiPage() {
   const [campos, setCampos]           = useState<CampoKey[]>(["lote","maquina","produto","status"]);
   const [resultados, setResultados]   = useState<LoteResult[]>([]);
   const [loading, setLoading]         = useState(false);
+  const [progresso, setProgresso]     = useState({ atual: 0, total: 0 });
   const [erro, setErro]               = useState("");
   const [copiado, setCopiado]         = useState(false);
 
@@ -91,12 +92,22 @@ export default function MiiPage() {
     setErro("");
     setLoading(true);
     setResultados([]);
+    setProgresso({ atual: 0, total: lotes.length });
+
+    const CHUNK = 200;
+    const acumulado: LoteResult[] = [];
+
     try {
-      const data = await apiFetch<LoteResult[]>("/lotes", {
-        method: "POST",
-        body: JSON.stringify(lotes),
-      });
-      setResultados(data);
+      for (let i = 0; i < lotes.length; i += CHUNK) {
+        const chunk = lotes.slice(i, i + CHUNK);
+        const data = await apiFetch<LoteResult[]>("/lotes", {
+          method: "POST",
+          body: JSON.stringify(chunk),
+        });
+        acumulado.push(...data);
+        setResultados([...acumulado]);
+        setProgresso({ atual: acumulado.length, total: lotes.length });
+      }
     } catch (err: unknown) {
       setErro(err instanceof Error ? err.message : String(err));
     } finally {
@@ -275,8 +286,18 @@ export default function MiiPage() {
           )}
 
           {loading && (
-            <div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>
-              <p>Consultando {lotesInput.split(/[\n,;]+/).filter(l => l.trim()).length} lotes no MII...</p>
+            <div style={{ padding: 24 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--muted)", marginBottom: 8 }}>
+                <span>Consultando lotes no MII...</span>
+                <span>{progresso.atual} / {progresso.total}</span>
+              </div>
+              <div style={{ background: "var(--border)", borderRadius: 6, height: 8, overflow: "hidden" }}>
+                <div style={{
+                  height: "100%", borderRadius: 6, background: "var(--blue)",
+                  width: progresso.total ? `${(progresso.atual / progresso.total) * 100}%` : "0%",
+                  transition: "width 0.3s ease",
+                }} />
+              </div>
             </div>
           )}
 
