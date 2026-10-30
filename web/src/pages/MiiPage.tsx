@@ -1,20 +1,11 @@
 /**
  * Página MII — Consulta SAP MII
- * Configuração de credenciais + consulta de lotes em massa
+ * Integra com api_mii.py (http://localhost:3000)
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
-
-interface MiiConfig {
-  host: string;
-  server: string;
-  plant: string;
-  query: string;
-  user: string;
-  configured: boolean;
-}
 
 interface LoteResult {
   lote: string;
@@ -41,12 +32,14 @@ const CAMPOS = [
 
 type CampoKey = typeof CAMPOS[number]["key"];
 
+// ─── Config ───────────────────────────────────────────────────────────────────
+
+const API_BASE = "http://localhost:3000";
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const MII_BASE = "http://localhost:4000";
-
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${MII_BASE}/api/mii${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...init,
   });
@@ -66,70 +59,26 @@ function resultsToCsv(results: LoteResult[], campos: CampoKey[]): string {
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function MiiPage() {
-  const [config, setConfig]           = useState<MiiConfig | null>(null);
-  const [showConfig, setShowConfig]   = useState(false);
-  const [pingStatus, setPingStatus]   = useState<"idle"|"ok"|"erro">("idle");
-  const [pingMsg, setPingMsg]         = useState("");
-
-  // Consulta
+  const [serverOk, setServerOk]       = useState<boolean | null>(null);
   const [lotesInput, setLotesInput]   = useState("");
   const [campos, setCampos]           = useState<CampoKey[]>(["lote","maquina","produto","status"]);
   const [resultados, setResultados]   = useState<LoteResult[]>([]);
   const [loading, setLoading]         = useState(false);
   const [erro, setErro]               = useState("");
   const [copiado, setCopiado]         = useState(false);
-  const tableRef = useRef<HTMLTableElement>(null);
 
-  // Config form
-  const [cfgForm, setCfgForm] = useState({
-    host: "http://ploula3075:50000",
-    server: "Plant_4196",
-    plant: "4196",
-    query: "AmcorMII/Reports/PlantDBLibraries/qryGetLotDtlInfo",
-    user: "",
-    pass: "",
-  });
-
-  useEffect(() => {
-    apiFetch<MiiConfig>("/config").then(c => {
-      setConfig(c);
-      setCfgForm(f => ({ ...f, host: c.host, server: c.server, plant: c.plant, query: c.query, user: c.user }));
-      if (!c.configured) setShowConfig(true);
-    }).catch(() => setShowConfig(true));
-  }, []);
-
-  async function salvarConfig(e: React.FormEvent) {
-    e.preventDefault();
+  // Verifica se api_mii.py está rodando
+  async function checarServidor() {
+    setServerOk(null);
     try {
-      const updated = await apiFetch<MiiConfig>("/config", {
-        method: "POST",
-        body: JSON.stringify(cfgForm),
-      });
-      setConfig(updated);
-      setShowConfig(false);
-      setPingStatus("idle");
-    } catch (err: unknown) {
-      alert("Erro ao salvar: " + (err instanceof Error ? err.message : String(err)));
+      await apiFetch<{ status: string }>("/ping");
+      setServerOk(true);
+    } catch {
+      setServerOk(false);
     }
   }
 
-  async function testarConexao() {
-    setPingStatus("idle");
-    setPingMsg("Testando...");
-    try {
-      const r = await apiFetch<{ ok: boolean; usuario?: string; erro?: string }>("/ping");
-      if (r.ok) {
-        setPingStatus("ok");
-        setPingMsg(`Conectado como ${r.usuario}`);
-      } else {
-        setPingStatus("erro");
-        setPingMsg(r.erro ?? "Erro desconhecido");
-      }
-    } catch (err: unknown) {
-      setPingStatus("erro");
-      setPingMsg(err instanceof Error ? err.message : String(err));
-    }
-  }
+  useEffect(() => { checarServidor(); }, []);
 
   async function consultar() {
     const lotes = lotesInput
@@ -186,86 +135,43 @@ export default function MiiPage() {
 
   return (
     <div style={{ padding: "24px 32px", maxWidth: 1100, margin: "0 auto" }}>
+
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Consulta MII</h2>
           <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 13 }}>
-            SAP MII · {config?.configured ? `Conectado como ${config.user}` : "Não configurado"}
+            SAP MII · {
+              serverOk === null ? "Verificando servidor..." :
+              serverOk ? <span style={{ color: "var(--green)" }}>api_mii.py rodando ✓</span> :
+              <span style={{ color: "var(--red)" }}>Servidor offline</span>
+            }
           </p>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {config?.configured && (
-            <button className="btn-outline" onClick={testarConexao}>Testar conexão</button>
-          )}
-          <button className="btn-primary" onClick={() => setShowConfig(s => !s)}>
-            {showConfig ? "Fechar" : "Configurar credenciais"}
-          </button>
-        </div>
+        <button className="btn-outline" onClick={checarServidor}>
+          Verificar servidor
+        </button>
       </div>
 
-      {/* Ping feedback */}
-      {pingMsg && (
-        <div className={`alert ${pingStatus === "ok" ? "alert-green" : pingStatus === "erro" ? "alert-red" : "alert-blue"}`}
-             style={{ marginBottom: 16 }}>
-          {pingMsg}
-        </div>
-      )}
-
-      {/* Painel de configuração */}
-      {showConfig && (
-        <div className="card" style={{ marginBottom: 24, padding: 20 }}>
-          <h3 style={{ margin: "0 0 16px", fontSize: 15 }}>Credenciais MII</h3>
-          <form onSubmit={salvarConfig}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-              <label className="field-label">
-                Usuário
-                <input className="input" value={cfgForm.user}
-                  onChange={e => setCfgForm(f => ({ ...f, user: e.target.value }))} required />
-              </label>
-              <label className="field-label">
-                Senha
-                <input className="input" type="password" value={cfgForm.pass}
-                  onChange={e => setCfgForm(f => ({ ...f, pass: e.target.value }))} required />
-              </label>
-            </div>
-            <details style={{ marginBottom: 12 }}>
-              <summary style={{ cursor: "pointer", color: "var(--muted)", fontSize: 13 }}>Configurações avançadas</summary>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
-                <label className="field-label">
-                  Host MII
-                  <input className="input" value={cfgForm.host}
-                    onChange={e => setCfgForm(f => ({ ...f, host: e.target.value }))} />
-                </label>
-                <label className="field-label">
-                  Servidor
-                  <input className="input" value={cfgForm.server}
-                    onChange={e => setCfgForm(f => ({ ...f, server: e.target.value }))} />
-                </label>
-                <label className="field-label">
-                  Planta
-                  <input className="input" value={cfgForm.plant}
-                    onChange={e => setCfgForm(f => ({ ...f, plant: e.target.value }))} />
-                </label>
-                <label className="field-label">
-                  Query Template
-                  <input className="input" value={cfgForm.query}
-                    onChange={e => setCfgForm(f => ({ ...f, query: e.target.value }))} />
-                </label>
-              </div>
-            </details>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button type="submit" className="btn-primary">Salvar</button>
-              {config?.configured && (
-                <button type="button" className="btn-outline" onClick={testarConexao}>Testar agora</button>
-              )}
-            </div>
-          </form>
+      {/* Banner: servidor offline */}
+      {serverOk === false && (
+        <div className="alert alert-red" style={{ marginBottom: 20 }}>
+          <strong>api_mii.py não está rodando.</strong><br />
+          Abra o terminal, vá até a pasta onde está o arquivo e rode:<br />
+          <code style={{ display: "inline-block", marginTop: 6, padding: "4px 8px",
+            background: "rgba(0,0,0,0.08)", borderRadius: 4, fontFamily: "monospace" }}>
+            python api_mii.py
+          </code>
+          <br />
+          <span style={{ fontSize: 12, marginTop: 4, display: "block" }}>
+            Depois clique em "Verificar servidor" acima.
+          </span>
         </div>
       )}
 
       {/* Área de consulta */}
-      <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 20, alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: 20, alignItems: "start" }}>
+
         {/* Coluna esquerda: input + campos */}
         <div>
           <div className="card" style={{ padding: 16, marginBottom: 16 }}>
@@ -285,13 +191,13 @@ export default function MiiPage() {
               className="btn-primary"
               style={{ width: "100%", marginTop: 12 }}
               onClick={consultar}
-              disabled={loading || !config?.configured}
+              disabled={loading || !serverOk}
             >
               {loading ? "Consultando..." : "Consultar MII"}
             </button>
-            {!config?.configured && (
+            {!serverOk && (
               <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, textAlign: "center" }}>
-                Configure as credenciais primeiro
+                Inicie o api_mii.py primeiro
               </p>
             )}
           </div>
@@ -332,7 +238,7 @@ export default function MiiPage() {
               </div>
 
               <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid var(--border)" }}>
-                <table ref={tableRef} style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: "var(--bg)" }}>
                       {campos.map(k => (
